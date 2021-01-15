@@ -16,11 +16,13 @@ def mymakedir(path):
 
 class SitprojectPipeline:
     def process_item(self, item, spider):
-        path = 'E://File//sit_html//' + item['name']
-        mymakedir(path)
-        with open(path + '//' + item['name'] + '.html', 'wb') as html_text:
-            html_text.write(item['html_text'])
-        if 'html_zip' in item:
-            with open(path + '//' + item['zip_name'] + '.rar', 'wb')as html_zip:
-                html_zip.write(item['html_zip'])
-        print('OK')
+        #   save .html
+        if 'html_url' in item and item['html_url']:
+            if not os.path.isfile(r'E:\File\sit_html\{}.html'.format(item['html_uuid'])):
+                with open(r'E:\File\sit_html\{}.html'.format(item['html_uuid']), 'wb') as html_body:
+                    html_body.write(item['html_body'])
+        #    save .rar .xsl .doc
+        if 'file_url' in item and item['file_url']:
+            if not os.path.isfile(r'E:\File\sit_html\{}.{}'.format(item['file_name'], item['file_form'])):
+                with open(r'E:\File\sit_html\{}.{}'.format(item['file_name'], item['file_form']), 'wb') as file_body:
+                    file_body.write(item['file_body'])
