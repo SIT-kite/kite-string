@@ -1,7 +1,5 @@
-import uuid
-from typing import List, Tuple
-
 import scrapy
+from typing import List, Tuple
 
 from ..items import SitprojectItem
 
@@ -10,32 +8,38 @@ class SitEduSpider(scrapy.Spider):
     name = 'sit_edu'
     allowed_domains = []
     extensions = ['rar', 'xls', 'xlsx', 'doc', 'docx', 'zip', 'exe', 'pdf']
-    start_urls = 'https://gs.sit.edu.cn/2020/1110/c5706a190002/page.htm'
+    start_urls = 'https://www.sit.edu.cn/'
 
     def start_requests(self):
-        yield scrapy.Request(url=self.start_urls, callback=self.parse)
+        yield scrapy.Request(url=self.start_urls, callback=self.parse, cb_kwargs={'title': 'None'})
 
     def parse(self, response, **kwargs):
         item = SitprojectItem()
 
         content_type = response.headers.get('Content-Type')
-        if content_type == 'text/html':
-            item['html_url'] = response.url
-            item['html_name'] = response.xpath('//title/text()').get()
-            item['html_uuid'] = uuid.uuid5(uuid.NAMESPACE_URL, item['html_url'])
-            item['html_body'] = response.body
+        if content_type == b'text/html':
+            item['url'] = response.url
+            item['name'] = response.xpath('//title/text()').get()
+            item['body'] = response.body
+            item['Type'] = 'html'
+            yield item
 
             # Add the other links to the link list.
             link_list = self.get_links(response)
             for title, url in link_list:
-                if '.sit.edu.cn' in url:
-                    yield scrapy.Request(url=response.urljoin(url), callback=self.parse, cb_kwargs={'title': title})
+                url = response.urljoin(url)
+                if 'sit.edu.cn' in url and 'mailto' not in url and '.js' not in url and '.css' not in \
+                        url:
+                    yield scrapy.Request(url=url, callback=self.parse, cb_kwargs={'title': title})
 
         else:  # Save attachment
-            item['file_url'] = response.url
-            item['file_name'] = kwargs['meta']['title']
-            item['file_body'] = response.body
-            yield item
+            item['url'] = response.url
+            item['name'] = response.cb_kwargs['title']
+            item['body'] = response.body
+            for Type in self.extensions:
+                if Type in response.url:
+                    item['Type'] = Type
+                    yield item
 
     def get_links(self, response) -> List[Tuple[str or None, str]]:
         """

@@ -7,6 +7,8 @@
 # useful for handling different item types with a single interface
 
 import os
+import sqlite3
+import uuid
 
 
 def mymakedir(path):
@@ -16,13 +18,15 @@ def mymakedir(path):
 
 class SitprojectPipeline:
     def process_item(self, item, spider):
-        #   save .html
-        if 'html_url' in item and item['html_url']:
-            if not os.path.isfile(r'E:\File\sit_html\{}.html'.format(item['html_uuid'])):
-                with open(r'E:\File\sit_html\{}.html'.format(item['html_uuid']), 'wb') as html_body:
-                    html_body.write(item['html_body'])
-        #    save .rar .xsl .doc
-        if 'file_url' in item and item['file_url']:
-            if not os.path.isfile(r'E:\File\sit_html\{}.{}'.format(item['file_name'], item['file_form'])):
-                with open(r'E:\File\sit_html\{}.{}'.format(item['file_name'], item['file_form']), 'wb') as file_body:
-                    file_body.write(item['file_body'])
+        if 'url' in item and item['url']:
+            if item['Type'] == 'html':
+                file_name = uuid.uuid5(uuid.NAMESPACE_URL, item['url'])
+            else:
+                file_name = item['name']
+            if not os.path.isfile(r'E:\File\sit_file\{}.{}'.format(file_name, item['Type'])):
+                with open(r'E:\File\sit_file\{}.{}'.format(file_name, item['Type']), 'wb')as file_body:
+                    file_body.write(item['body'])
+
+            file_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, item['url']))
+            with open(r'E:\File\sit_file\data_sheet.txt', 'a+', encoding='utf-8')as data:
+                data.writelines('url:{}  uuid:{}  name:{}\n'.format(item['url'], file_uuid, item['name']))
