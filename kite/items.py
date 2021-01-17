@@ -18,4 +18,7 @@ class FileItem(scrapy.Item):
     content = scrapy.Field()
     # Meta tyoe, from the 'Content-Type' in response header
     meta_type = scrapy.Field()
-
+    # Publish time
+    publish_time = scrapy.Field()
+    # Link count. Used to analyze whether the page is an article or not.
+    link_count = scrapy.Field()
