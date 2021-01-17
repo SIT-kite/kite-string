@@ -1,9 +1,8 @@
 from typing import List, Tuple
-from gne import GeneralNewsExtractor
 
 import scrapy
 
-from ..items import FileItem
+from ..items import AttachmentItem, PageItem
 
 
 def get_links(response: scrapy.http.Response) -> List[Tuple[str or None, str]]:
@@ -34,7 +33,10 @@ def filter_links(link_list: List[Tuple]) -> List[Tuple]:
                 return True
         return False
 
-    return [(title, url) for title, url in link_list if not is_forbidden_url(url)]
+    def is_allowed(url: str) -> bool:
+        return not is_forbidden_url(url) and '.sit.edu.cn' in url
+
+    return [(title, url) for title, url in link_list if is_allowed(url)]
 
 
 class PublicFileSpider(scrapy.Spider):
@@ -42,23 +44,11 @@ class PublicFileSpider(scrapy.Spider):
     allowed_domains = []
     start_urls = 'https://www.sit.edu.cn/'
 
-    extractor = GeneralNewsExtractor()
-
     def start_requests(self):
         """"
         Handler to the initial process.
         """
         yield scrapy.Request(url=self.start_urls, callback=self.parse, cb_kwargs={'title': None})
-
-    def extract_main_page(self, html: str) -> dict:
-        """
-        Use GNE (GeneralNewsExtractor) to extract main content from html.
-        :param html: Html page
-        :return: A dict returned by extract method.
-            Keys: title, author, publish_time, content, images
-        """
-        result = self.extractor.extract(html)
-        return result
 
     def parse(self, response: scrapy.http.Response, **kwargs):
         """
@@ -67,28 +57,31 @@ class PublicFileSpider(scrapy.Spider):
         :param kwargs: A dictionary of parameters.
         :return: None
         """
-        item = FileItem()
 
         # Note: response.headers is a caseless dict.
-        item['meta_type'] = response.headers.get('Content-Type')
-        item['url'] = response.url
-        item['title'] = kwargs['title'] or response.xpath('//title/text()').get()
-        # Some special processing for html.
-        if item['meta_type'] == b'text/html':
+        meta_type = response.headers.get('Content-Type').decode('utf-8')  # bytes to str
+        if 'text/html' in meta_type:
+            item = PageItem()
+
             item['link_count'] = len(response.css('a[href]'))
+            item['title'] = response.xpath('//title/text()').get()
 
-            parsed_page = self.extract_main_page(response.body)
-            item['content'] = parsed_page.get('content')
-            item['publish_time'] = parsed_page.get('publish_time', default=None)
+        else:
+            item = AttachmentItem()
 
-        if 'publish_time' not in item:  # ?
-            item['publish_time'] = response.headers.get('Last-Modified')
+            item['title'] = kwargs['title']  # Take file title from last page.
+            item['size'] = int(response.headers.get('Content-Length') or 0)
+
+        item['meta_type'] = meta_type
+        item['url'] = response.url
+        item['publish_time'] = response.headers.get('Last-Modified')
+        item['content'] = response.body
 
         # Submit the item to pipeline.
         yield item
 
         # Get other links from the page and append them to url list if current item is a html file.
-        if item['meta_type'] == b'text/html':
+        if 'text/html' in meta_type:
             # Add the other links to the link list.
             link_list = get_links(response)
             link_list = filter_links(link_list)
