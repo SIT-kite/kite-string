@@ -53,7 +53,7 @@ class SitprojectSpiderMiddleware:
             yield r
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.name)
+        spider.logger.info('Spider opened: %s' % spider.title)
 
 
 class SitprojectDownloaderMiddleware:
@@ -100,4 +100,4 @@ class SitprojectDownloaderMiddleware:
         pass
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.name)
+        spider.logger.info('Spider opened: %s' % spider.title)

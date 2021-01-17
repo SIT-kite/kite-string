@@ -6,11 +6,16 @@
 import scrapy
 
 
-class SitprojectItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    # title = scrapy.Field()
-    name = scrapy.Field()
+class FileItem(scrapy.Item):
+    # File name. For example, the url is 'www.baidu.com/index.html',
+    # the file name is 'index.html'
+    title = scrapy.Field()
+    # Saved name
+    filename = scrapy.Field()
+    # URL.
     url = scrapy.Field()
-    body = scrapy.Field()
-    Type = scrapy.Field()
+    # File content
+    content = scrapy.Field()
+    # Meta tyoe, from the 'Content-Type' in response header
+    meta_type = scrapy.Field()
+
