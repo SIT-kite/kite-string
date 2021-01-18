@@ -94,10 +94,16 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 3.0
 Scrapy-redis
 """
 # Enables scheduling storing requests queue in redis.
-SCHEDULER = "scrapy_redis.scheduler.Scheduler"
+# SCHEDULER = "scrapy_redis.scheduler.Scheduler"
 
 # Ensure all spiders share same duplicates filter through redis.
-DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
+# DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
+
+# Ensure use this Scheduler
+SCHEDULER = "scrapy_redis_bloomfilter.scheduler.Scheduler"
+
+# Ensure all spiders share same duplicates filter through redis
+DUPEFILTER_CLASS = "scrapy_redis_bloomfilter.dupefilter.RFPDupeFilter"
 
 # Default requests serializer is pickle, but it can be changed to any module
 # with loads and dumps functions. Note that pickle is not compatible between
@@ -159,3 +165,15 @@ REDIS_PARAMS = {}
 
 # Default start urls key for RedisSpider and RedisCrawlSpider.
 # REDIS_START_URLS_KEY = '%(name)s:start_urls'
+
+"""
+Scrapy-redis-bloomfilter
+"""
+# Number of Hash Functions to use, defaults to 6
+BLOOMFILTER_HASH_NUMBER = 6
+
+# Redis Memory Bit of Bloom Filter Usage, 30 means 2^30 = 128MB, defaults to 30
+BLOOMFILTER_BIT = 20
+
+# Persist
+SCHEDULER_PERSIST = True
