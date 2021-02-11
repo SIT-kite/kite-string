@@ -6,13 +6,13 @@
 
 # useful for handling different item types with a single interface
 
+import hashlib
 import os
-import uuid
 
-import chardet
-from gne import GeneralNewsExtractor
+import scrapy
+from scrapy.pipelines.files import FilesPipeline
 
-from .items import AttachmentItem, PageItem
+from .items import FileItem
 
 
 def create_directory_if_not_exists(path: str) -> None:
@@ -45,69 +45,46 @@ def get_file_extension(file: str) -> str:
     if slash_pos == -1:  # It's a file name
         if dot_pos != -1:
             result = file[dot_pos + 1:]
-        else:
-            pass
     else:  # It's an url string
         if dot_pos > slash_pos:  # www.sit.edu.cn/index.html
             result = file[dot_pos + 1:]
-        else:  # www.sit.edu.cn/
-            pass
+        # Else: www.sit.edu.cn/
     return result
 
 
-def generate_file_name(url: str, original_name: str) -> str:
+def generate_file_name(url: str) -> str:
     """
     Generate a file name using UUID5
     :param url: File url
-    :param original_name: Original name
     :return: New file name
     """
-    uuid_name = uuid.uuid5(uuid.NAMESPACE_URL, url)
-    extension = get_file_extension(original_name) or get_file_extension(url)
+    extension = get_file_extension(url)
     if not extension:
         # Set default extension as 'html' seems to be arbitrary, however,
         # When get_file_extension(url) returns an empty string, the file probably be a html file because
         # the file usually is the 'index.html' or 'php' or 'jsp' and so on.
         extension = 'htm'
 
-    return f'{uuid_name}.{extension}'
+    filename = hashlib.sha1(url.encode('utf-8')).hexdigest()
+    return f'{filename}.{extension}'
 
 
-class FilePipeline:
-    """
-    File download pipeline.
-    """
-    extractor = None
+class FileCachingPipeline(FilesPipeline):
 
-    def __init__(self):
-        self.extractor = GeneralNewsExtractor()
+    def get_media_requests(self, item: FileItem, info):
+        yield scrapy.Request(item['url'], meta={'title': item['title']})
 
-    def extract_main_page(self, html: str) -> dict:
-        """
-        Use GNE (GeneralNewsExtractor) to extract main content from html.
-        :param html: Html page
-        :return: A dict returned by extract method.
-            Keys: title, author, publish_time, content, images
-        """
-        result = self.extractor.extract(html)
-        return result
+    def file_path(self, request, response=None, info=None, *, item=None):
+        new_name = generate_file_name(request.url)
 
-    def process_item(self, item: PageItem or AttachmentItem, spider) -> PageItem or AttachmentItem:
-        item['filename'] = generate_file_name(item['url'], item['title'])
+        return new_name
 
-        if 'text/html' in item['meta_type']:
-            # Check page encoding and use GNE to extract the main page.
-            encoding_result = chardet.detect(item['content'])
-            content = item['content'].decode(encoding_result['encoding'])
-            parsed_page = self.extract_main_page(content)
+    def item_completed(self, results, item: FileItem, info):
+        b_result, result_info = results[0]
+        if not b_result:
+            item['is_continuing'] = False
+        else:
+            item['checksum'] = result_info['checksum']
+            item['path'] = result_info['path']
 
-            item['content'] = parsed_page.get('content')
-            item['publish_time'] = parsed_page.get('publish_time')
-
-        '''
-        FileItem fields.
-        title, filename, url, content, meta_type
-        '''
-        # open('E:\\File\\' + item['filename'], 'wb+').write(item['content'])
-        # open('files.txt', 'a+', encoding='utf-8').write()
         return item
