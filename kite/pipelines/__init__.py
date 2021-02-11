@@ -3,5 +3,5 @@
 # @Author  : sunnysab
 # @File    : __init__.py
 
-
 from .caching import FileCachingPipeline
+from .page import PagePipeline

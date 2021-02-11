@@ -11,6 +11,9 @@ class FileItem(scrapy.Item):
     FileItem is for each link.
     """
 
+    ''' Operating related information '''
+    is_continuing = scrapy.Field()
+
     ''' Basic information '''
     # URL.
     url = scrapy.Field()
@@ -23,9 +26,6 @@ class FileItem(scrapy.Item):
     checksum = scrapy.Field()
     # File path
     path = scrapy.Field()
-
-    ''' Operating related information '''
-    is_continuing: bool = True
 
 
 class AttachmentItem(FileItem):

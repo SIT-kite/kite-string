@@ -22,6 +22,7 @@ class FileCachingPipeline(FilesPipeline):
         if not b_result:
             item['is_continuing'] = False
         else:
+            item['is_continuing'] = True
             item['checksum'] = result_info['checksum']
             item['path'] = result_info['path']
 
