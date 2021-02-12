@@ -24,5 +24,4 @@ class FileCachingPipeline(FilesPipeline):
             if b_result:
                 item['checksum'] = result_info['checksum']
                 item['path'] = result_info['path']
-
-            return item
+                return item
