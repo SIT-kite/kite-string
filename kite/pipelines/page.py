@@ -3,6 +3,10 @@
 # @Author  : sunnysab
 # @File    : page.py
 
+import re
+from typing import Tuple
+from urllib.parse import urlparse
+
 import chardet
 import psycopg2
 import scrapy
@@ -29,6 +33,33 @@ def open_database():
     return db
 
 
+def divide_url(url: str) -> Tuple[str, str]:
+    """
+    Given a full url and return a tuple of host and path.
+    Parser is provided by urllib.
+    :param url: a full url like 'http://sit.edu.cn/index.htm'
+    :return: a tuple like ('sit.edu.cn', '/index.htm')
+    """
+    result = urlparse(url)
+    return result.netloc, result.path
+
+
+DATE_PATTERN = re.compile(r'\d{4}-\d{1,2}-\d{1,2')
+DATE_SEP_WORDS = re.compile(r'[年月/]')
+
+
+def validate_date(date_str: str) -> str or None:
+    """
+    Validate a date string.
+    :param date_str: date string like '2020-1-1', '2020年1月1日'...
+    :return: None if failed. Otherwise returns a valid date string.
+    """
+    date_str = DATE_SEP_WORDS.sub(date_str, '-').replace('日', '')
+    if DATE_PATTERN.match(date_str):
+        return date_str
+    return None
+
+
 class PagePipeline:
     pg_client = None
     pg_cursor = None
@@ -44,24 +75,33 @@ class PagePipeline:
             self.pg_client = None  # Python interpreter will close it automatically.
 
         self.pg_client = open_database()
+        self.pg_client.set_client_encoding('UTF8')
         self.pg_cursor = self.pg_client.cursor()
+        spider.log('One Pg client opened.')
 
     def close_spider(self, spider: scrapy.Spider):
         self.pg_client.commit()
         self.pg_cursor = None
         self.pg_client = None
+        spider.log('One Pg client committed and closed.')
 
-    def submit_item(self, item: PageItem):
+    def submit_item(self, item: PageItem, spider: scrapy.Spider):
         insert_sql = \
             f'''
             INSERT INTO 
-                files (a_title, a_publish_time, a_content, f_id)
+                pages (title, host, path, publish_date, link_count, content)
             VALUES 
-                ('{item['title']}', '{item['publish_time']}', '{item['content']}', null);
+                (%s, %s, %s, %s, %s, %s);
             '''
 
-        self.pg_cursor.execute(insert_sql)
-        self.pg_client.commit()
+        host, path = divide_url(item['url'])
+        try:
+            self.pg_cursor.execute(insert_sql,
+                                   (item['title'], host, path, item['publish_time'], item['link_count'],
+                                    item['content']))
+            self.pg_client.commit()
+        except Exception as e:
+            spider.logger.error(f'Error while submitting item {item} to pg, detail: {e}')
 
     def process_item(self, item: PageItem, spider: scrapy.Spider):
         if not item['is_continuing'] or not isinstance(item, PageItem):
@@ -79,12 +119,12 @@ class PagePipeline:
             item['is_continuing'] = False
             return item
 
-        result = self.gne_extractor.extract(content.decode(encoding))
+        result = self.gne_extractor.extract(content.decode(encoding, errors='replace'))
         item['title'] = item['title'] or result['title']
-        item['publish_time'] = result['publish_time']
-        item['content'] = "".join(result['content'].replace('\n', '<br>').split())
+        item['publish_time'] = validate_date(result['publish_time'])
+        item['content'] = result['content']
 
-        self.submit_item(item)
+        self.submit_item(item, spider)
 
         item['is_continuing'] = False
         return item
