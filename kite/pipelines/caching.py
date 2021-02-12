@@ -15,17 +15,13 @@ class FileCachingPipeline(FilesPipeline):
     """
 
     def get_media_requests(self, item: StoreItem, info):
-        if not item['is_continuing']:
-            return []
-
-        yield scrapy.Request(item['url'], meta={'title': item['title']})
+        if item:
+            yield scrapy.Request(item['url'], meta={'title': item['title']})
 
     def item_completed(self, results, item: StoreItem, info):
+        # Use for statement to replace 'if let'
         for b_result, result_info in results:
-            if not b_result:
-                item['is_continuing'] = False
-            else:
-                item['is_continuing'] = True
+            if b_result:
                 item['checksum'] = result_info['checksum']
                 item['path'] = result_info['path']
 

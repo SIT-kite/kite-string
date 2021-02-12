@@ -67,6 +67,7 @@ DEFAULT_REQUEST_HEADERS = {
 ITEM_PIPELINES = {
     'kite.pipelines.PagePipeline': 300,
     'kite.pipelines.FileCachingPipeline': 301,
+    'kite.pipelines.AttachmentPipeline': 302,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
