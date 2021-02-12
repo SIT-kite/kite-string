@@ -85,11 +85,6 @@ class PublicPageSpider(scrapy.Spider):
         :return: None
         """
 
-        '''
-        Note: The parse method is only a method for parsing html. It doesn't treat attachment files.
-            So we yield attachment urls. 
-        2021.1.20
-        '''
         # Note: response.headers is a caseless dict.
         this_page = PageItem()
         this_page['link_count'] = len(response.css('a[href]'))
@@ -122,6 +117,6 @@ class PublicPageSpider(scrapy.Spider):
             elif link_type == 'attachment':  # link_type may equal to 'attachment'
                 item = AttachmentItem()
 
-                item['url'] = response.url
-                item['title'] = kwargs['title']  # Take file title from last page.
+                item['url'] = url
+                item['title'] = title  # Take file title from last page.
                 yield item

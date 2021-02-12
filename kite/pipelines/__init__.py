@@ -7,10 +7,10 @@ from psycopg2.pool import ThreadedConnectionPool
 from scrapy.utils.project import get_project_settings
 
 # Global pg connection pool for pipelines.
-__pg_pool = None
+__pg_pool: ThreadedConnectionPool = None
 
 # attachment directory
-download_directory = get_project_settings()['download']
+download_directory = get_project_settings()['FILES_STORE']
 
 
 def open_database():

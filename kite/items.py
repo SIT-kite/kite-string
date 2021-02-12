@@ -9,19 +9,11 @@ import scrapy
 class StoreItem(scrapy.Item):
     """ Base class for attachment and page item. """
 
-    ''' Operating related information '''
-    is_continuing = scrapy.Field()
-
-    ''' Basic information '''
     # URL.
     url = scrapy.Field()
     # File name. For example, the url is 'www.baidu.com/index.html',
     # the file name is 'index.html'
     title = scrapy.Field()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self['is_continuing'] = True
 
 
 class AttachmentItem(StoreItem):
