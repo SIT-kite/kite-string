@@ -38,6 +38,7 @@ def open_database():
 def get_database():
     if __pg_pool:
         conn = __pg_pool.getconn()
+        conn.autocommit = True
         conn.set_client_encoding('utf8')
 
         return conn
