@@ -69,7 +69,7 @@ def guess_link_type(path: str) -> str:
 class PublicPageSpider(scrapy.Spider):
     name = 'public'
     allowed_domains = []
-    start_urls = 'https://www.sit.edu.cn/14256/list.htm'
+    start_urls = 'https://www.sit.edu.cn/'
 
     def start_requests(self):
         """"
@@ -93,12 +93,15 @@ class PublicPageSpider(scrapy.Spider):
         this_page['publish_time'] = response.headers.get('Last-Modified')
         this_page['content'] = response.body
 
+        this_page['title'] = this_page['title'].strip() if this_page['title'] else ''
+
         # Submit the this_page to pipeline.
         yield this_page
 
         # Get other links from the page and append them to url list
         link_list = get_links(response)
         for title, url in link_list:
+            title = title.strip() if title else ''
             url = response.urljoin(url)
             if '.sit.edu.cn' not in url:
                 continue
@@ -118,5 +121,5 @@ class PublicPageSpider(scrapy.Spider):
                 item = AttachmentItem()
 
                 item['url'] = url
-                item['title'] = title  # Take file title from last page.
+                item['title'] = title.replace('\xa0', '').replace(' ', '')  # Take file title from last page.
                 yield item

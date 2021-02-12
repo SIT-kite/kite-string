@@ -25,10 +25,10 @@ CONCURRENT_REQUESTS = 64
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 0.2
+DOWNLOAD_DELAY = 0.05
 # The download delay setting will honor only one of:
-CONCURRENT_REQUESTS_PER_DOMAIN = 5
-CONCURRENT_REQUESTS_PER_IP = 5
+CONCURRENT_REQUESTS_PER_DOMAIN = 16
+CONCURRENT_REQUESTS_PER_IP = 16
 
 # Disable cookies (enabled by default)
 COOKIES_ENABLED = False
@@ -83,6 +83,8 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 3.0
 # Enable showing throttling stats for every response received:
 # AUTOTHROTTLE_DEBUG = False
 
+DOWNLOAD_WARNSIZE = 0
+
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
 # HTTPCACHE_ENABLED = True
@@ -95,4 +97,10 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 3.0
 FILES_STORE = 'download'
 
 LOG_LEVEL = 'INFO'
-LOG_FILE = 'log.txt'
+# LOG_FILE = 'log.txt'
+
+PG_DATABASE = 'db'
+PG_USERNAME = 'user'
+PG_PASSWORD = 'password'
+PG_PORT = 5432
+PG_HOST = 'ip'
