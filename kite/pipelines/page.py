@@ -44,7 +44,7 @@ def divide_url(url: str) -> Tuple[str, str]:
     return result.netloc, result.path
 
 
-DATE_PATTERN = re.compile(r'\d{4}-\d{1,2}-\d{1,2')
+DATE_PATTERN = re.compile(r'\d{4}-\d{1,2}-\d{1,2}')
 DATE_SEP_WORDS = re.compile(r'[年月/]')
 
 
@@ -54,7 +54,7 @@ def validate_date(date_str: str) -> str or None:
     :param date_str: date string like '2020-1-1', '2020年1月1日'...
     :return: None if failed. Otherwise returns a valid date string.
     """
-    date_str = DATE_SEP_WORDS.sub(date_str, '-').replace('日', '')
+    date_str = DATE_SEP_WORDS.sub('-', date_str).replace('日', '')
     if DATE_PATTERN.match(date_str):
         return date_str
     return None
