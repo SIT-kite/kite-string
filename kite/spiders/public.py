@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 import scrapy
 
+from .. import divide_url
 from ..items import AttachmentItem, PageItem
 
 
@@ -22,10 +23,7 @@ def filter_links(link_list: List[Tuple]) -> List[Tuple]:
                 return True
         return False
 
-    def is_allowed(url: str) -> bool:
-        return not is_forbidden_url(url) and '.sit.edu.cn' in url
-
-    return [(title, url) for title, url in link_list if is_allowed(url)]
+    return [(title, url) for title, url in link_list if not is_forbidden_url(url)]
 
 
 def get_links(response: scrapy.http.Response) -> List[Tuple[str or None, str]]:
@@ -39,27 +37,39 @@ def get_links(response: scrapy.http.Response) -> List[Tuple[str or None, str]]:
     return filter_links(link_list)
 
 
-def guess_link_type(url: str) -> str:
+def guess_link_type(path: str) -> str:
     """
-    Guess link type by url
-    :param url: Link url.
-    :return: a string 'page' if it seems like a page, while 'attachment' when not.
+    Guess link type by path
+    :param path: Path in url.
+    :return: 'page' if it seems like a page.
+             'attachment' if it seems like an attachment.
+             'unknown' if we don't know.
     """
 
     page_postfix_set = {
-        'jsp', 'do', 'htm', 'html', '/', 'portal', 'action'
+        'asp', 'aspx', 'jsp', 'do', 'htm', 'html', 'php', 'cgi', '/', 'portal', 'action'
+    }
+
+    attachment_postfix_set = {
+        '7z', 'zip', 'rar',
+        'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx', 'pdf'
     }
 
     for each_postfix in page_postfix_set:
-        if url.endswith(each_postfix):
+        if path.endswith(each_postfix):
             return 'page'
-    return 'attachment'
+
+    for each_postfix in attachment_postfix_set:
+        if path.endswith(each_postfix):
+            return 'attachment'
+
+    return 'unknown'
 
 
 class PublicPageSpider(scrapy.Spider):
     name = 'public'
     allowed_domains = []
-    start_urls = 'https://www.sit.edu.cn/'
+    start_urls = 'https://www.sit.edu.cn/14256/list.htm'
 
     def start_requests(self):
         """"
@@ -95,18 +105,21 @@ class PublicPageSpider(scrapy.Spider):
         link_list = get_links(response)
         for title, url in link_list:
             url = response.urljoin(url)
+            if '.sit.edu.cn' not in url:
+                continue
 
             """
             Separate pages from attachments.
             We may fetch the url and see what server say in 'Content-Type' but it can't be done in parse
             function. Actually, it's the simplest way to distinguish pages and attachments without fetching. 
             """
-            link_type = guess_link_type(url)
+            _, path = divide_url(url)
+            link_type = guess_link_type(path)
             if link_type == 'page':
                 # Fetch next page
                 yield scrapy.Request(url=url, callback=self.parse, cb_kwargs={'title': title})
 
-            else:  # link_type may equal to 'attachment'
+            elif link_type == 'attachment':  # link_type may equal to 'attachment'
                 item = AttachmentItem()
 
                 item['url'] = response.url
