@@ -85,15 +85,15 @@ class PublicPageSpider(scrapy.Spider):
         :return: None
         """
 
+        if response.headers.get('Content-Type') != b'text/html':
+            return None
+
         # Note: response.headers is a caseless dict.
         this_page = PageItem()
         this_page['link_count'] = len(response.css('a[href]'))
-        this_page['title'] = response.xpath('//title/text()').get() or kwargs['title']
+        this_page['title'] = kwargs['title']
         this_page['url'] = response.url
-        this_page['publish_time'] = response.headers.get('Last-Modified')
         this_page['content'] = response.body
-
-        this_page['title'] = this_page['title'].strip() if this_page['title'] else ''
 
         # Submit the this_page to pipeline.
         yield this_page

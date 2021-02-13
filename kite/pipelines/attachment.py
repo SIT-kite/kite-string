@@ -78,7 +78,7 @@ class AttachmentPipeline:
         insert_sql = \
             f'''
             INSERT INTO 
-                attachments (title, host, path, ext, size, local_name, checksum)
+                public.attachments (title, host, path, ext, size, local_name, checksum)
             VALUES 
                 (%s, %s, %s, %s, %s, %s, %s);
             '''

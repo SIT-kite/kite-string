@@ -4,6 +4,7 @@
 # @File    : page.py
 
 import re
+from typing import List
 
 import chardet
 import scrapy
@@ -13,7 +14,7 @@ from . import open_database, get_database
 from .. import divide_url
 from ..items import PageItem
 
-DATE_PATTERN = re.compile(r'\d{4}-\d{1,2}-\d{1,2}')
+DATE_PATTERN = re.compile(r'^(\d{4}-\d{1,2}-\d{1,2})$')
 DATE_SEP_WORDS = re.compile(r'[年月/]')
 
 
@@ -23,10 +24,50 @@ def validate_date(date_str: str) -> str or None:
     :param date_str: date string like '2020-1-1', '2020年1月1日'...
     :return: None if failed. Otherwise returns a valid date string.
     """
-    date_str = DATE_SEP_WORDS.sub('-', date_str).replace('日', '')
-    if DATE_PATTERN.match(date_str):
-        return date_str
+    if date_str:
+        date_str = DATE_SEP_WORDS.sub('-', date_str).replace('日', '')
+        if DATE_PATTERN.match(date_str):
+            return date_str
     return None
+
+
+PAGE_DATE_PATTERN = re.compile(r'(?:(?:发布)?(?:时间|日期)[:：]\s?)(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}(日)?)\s')
+
+
+def find_out_publish_date(html: str) -> str or None:
+    """
+    Find publish date by regex in html, used to replace the parser in Gne library.
+    :param html: html
+    :return:
+    """
+    r = PAGE_DATE_PATTERN.search(html)
+    if r:
+        return r.group(1)
+
+
+def merge_paragraph(p_list: List[str]) -> List[str]:
+    """
+    Merge some single character to paragraph.
+    Some characters in a paragraph are in different <span> tags. Gne library usually separates them into
+    multiple paragraphs. This function is used to merge them.
+    :param p_list: Paragraph list
+    :return: Processed paragraph list
+    """
+    if len(p_list) <= 1:
+        return p_list
+
+    i, n = 1, len(p_list)
+    result = [p_list[1]]
+
+    while i < n:
+        if len(p_list[i]) < 5:
+            # Strip last paragraph and append current to it.
+            result[-1] = p_list[-1].rstrip() + p_list[i]
+        else:
+            # Copy src to dst
+            result.append(p_list[i])
+        i += 1
+    return result
 
 
 class PagePipeline:
@@ -53,7 +94,7 @@ class PagePipeline:
         insert_sql = \
             f'''
             INSERT INTO 
-                pages (title, host, path, publish_date, link_count, content)
+                public.pages (title, host, path, publish_date, link_count, content)
             VALUES 
                 (%s, %s, %s, %s, %s, %s);
             '''
@@ -79,13 +120,16 @@ class PagePipeline:
                 encoding = 'utf-8'
             else:
                 return
-
-            result = self.gne_extractor.extract(content.decode(encoding, errors='replace'))
-            item['title'] = item['title'] or result['title']
-            item['publish_time'] = validate_date(result['publish_time'])
-            item['content'] = result['content']
+            content = content.decode(encoding, errors='replace')
+            try:
+                result = self.gne_extractor.extract(content)
+            except Exception as e:
+                print(e)
+                return
+            item['title'] = result['title'] or item['title']
+            item['publish_time'] = validate_date(find_out_publish_date(content))
+            item['content'] = '\n'.join(merge_paragraph(result['content'].split('\n')))
 
             self.submit_item(item, spider)
-
         else:
             return item
