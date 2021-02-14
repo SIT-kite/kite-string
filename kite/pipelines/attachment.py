@@ -74,10 +74,10 @@ class AttachmentPipeline:
     def submit_item(self, item: AttachmentItem, spider: scrapy.Spider):
         insert_sql = \
             f'''
-            INSERT INTO 
-                public.attachments (title, host, path, ext, size, local_name, checksum, referer)
-            VALUES 
-                (%s, %s, %s, %s, %s, %s, %s, %s);
+            -- (_title text, _host text, _path text, _ext text, _size integer, _local_name text, _checksum text, 
+            --  _referer text)
+            
+            CALL public.submit_attachment(%s, %s, %s, %s, %s, %s, %s, %s);
             '''
 
         host, path = divide_url(item['url'])

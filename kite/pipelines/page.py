@@ -96,10 +96,9 @@ class PagePipeline:
     def submit_item(self, item: PageItem, spider: scrapy.Spider):
         insert_sql = \
             f'''
-            INSERT INTO 
-                public.pages (title, host, path, publish_date, link_count, content)
-            VALUES 
-                (%s, %s, %s, %s, %s, %s);
+            -- (_title text, _host text, _path text, _publish_date date, _link_count integer, _content text)
+            
+            CALL public.submit_page(%s, %s, %s, %s, %s, %s);
             '''
 
         host, path = divide_url(item['url'])
