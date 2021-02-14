@@ -10,8 +10,7 @@ import chardet
 import scrapy
 from gne import GeneralNewsExtractor
 
-from . import open_database, get_database
-from .. import divide_url
+from .. import get_database, divide_url
 from ..items import PageItem
 
 URL_DATE_PATTERN = re.compile(r'/(20[012]\d/\d{4})/')
@@ -86,8 +85,6 @@ class PagePipeline:
         self.gne_extractor = GeneralNewsExtractor()
 
     def open_spider(self, spider: scrapy.Spider):
-        open_database()
-
         self.pg_client = get_database()
         self.pg_cursor = self.pg_client.cursor()
         spider.log('One Pg client opened.')

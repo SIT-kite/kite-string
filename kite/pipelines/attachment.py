@@ -8,8 +8,7 @@ import os
 import scrapy
 
 from . import download_directory
-from . import open_database, get_database
-from .. import divide_url
+from .. import divide_url, get_database
 from ..items import AttachmentItem
 
 
@@ -64,8 +63,6 @@ class AttachmentPipeline:
         pass
 
     def open_spider(self, spider: scrapy.Spider):
-        open_database()
-
         self.pg_client = get_database()
         self.pg_cursor = self.pg_client.cursor()
         spider.log('One Pg client opened.')

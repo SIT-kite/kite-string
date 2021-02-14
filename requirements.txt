@@ -1,5 +1,6 @@
 attrs==20.3.0
 Automat==20.2.0
+bitarray==1.6.3
 cffi==1.14.4
 chardet==4.0.0
 constantly==15.1.0
@@ -19,6 +20,7 @@ Protego==0.1.16
 psycopg2==2.8.6
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
+pybloom-live==3.0.0
 pycparser==2.20
 PyDispatcher==2.0.5
 PyHamcrest==2.0.2
