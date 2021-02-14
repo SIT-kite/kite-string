@@ -10,7 +10,8 @@ import chardet
 import scrapy
 from gne import GeneralNewsExtractor
 
-from .. import get_database, divide_url
+from . import create_connection_pool
+from .. import divide_url
 from ..items import PageItem
 
 URL_DATE_PATTERN = re.compile(r'/(20[012]\d/\d{4})/')
@@ -76,24 +77,12 @@ def merge_paragraph(p_list: List[str]) -> List[str]:
 
 
 class PagePipeline:
-    pg_client = None
-    pg_cursor = None
-
-    gne_extractor = None
 
     def __init__(self):
         self.gne_extractor = GeneralNewsExtractor()
+        self.pg_pool = create_connection_pool()
 
-    def open_spider(self, spider: scrapy.Spider):
-        self.pg_client = get_database()
-        self.pg_cursor = self.pg_client.cursor()
-        spider.log('One Pg client opened.')
-
-    def close_spider(self, spider: scrapy.Spider):
-        self.pg_client.commit()
-        spider.log('One Pg client committed and closed.')
-
-    def submit_item(self, item: PageItem, spider: scrapy.Spider):
+    def submit_item(self, cursor, item: PageItem):
         insert_sql = \
             f'''
             -- (_title text, _host text, _path text, _publish_date date, _link_count integer, _content text)
@@ -102,13 +91,8 @@ class PagePipeline:
             '''
 
         host, path = divide_url(item['url'])
-        try:
-            self.pg_cursor.execute(insert_sql,
-                                   (item['title'], host, path, item['publish_time'], item['link_count'],
-                                    item['content']))
-            self.pg_client.commit()
-        except Exception as e:
-            spider.logger.error(f'Error while submitting item {item} to pg, detail: {e}')
+        cursor.execute(insert_sql,
+                       (item['title'], host, path, item['publish_time'], item['link_count'], item['content']))
 
     def process_item(self, item: PageItem, spider: scrapy.Spider):
         if item and isinstance(item, PageItem):
@@ -132,6 +116,6 @@ class PagePipeline:
             item['publish_time'] = try_parse_date(item['url'])
             item['content'] = '\n'.join(merge_paragraph(result['content'].split('\n')))
 
-            self.submit_item(item, spider)
+            self.pg_pool.runInteraction(self.submit_item, item)
         else:
             return item

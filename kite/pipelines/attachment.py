@@ -7,8 +7,8 @@ import os
 
 import scrapy
 
-from . import download_directory
-from .. import divide_url, get_database
+from . import download_directory, create_connection_pool
+from .. import divide_url
 from ..items import AttachmentItem
 
 
@@ -56,22 +56,11 @@ def get_file_size(path: str) -> int:
 
 
 class AttachmentPipeline:
-    pg_client = None
-    pg_cursor = None
 
     def __init__(self):
-        pass
+        self.pg_pool = create_connection_pool()
 
-    def open_spider(self, spider: scrapy.Spider):
-        self.pg_client = get_database()
-        self.pg_cursor = self.pg_client.cursor()
-        spider.log('One Pg client opened.')
-
-    def close_spider(self, spider: scrapy.Spider):
-        self.pg_client.commit()
-        spider.log('One Pg client committed and closed.')
-
-    def submit_item(self, item: AttachmentItem, spider: scrapy.Spider):
+    def submit_item(self, cursor, item: AttachmentItem):
         insert_sql = \
             f'''
             -- (_title text, _host text, _path text, _ext text, _size integer, _local_name text, _checksum text, 
@@ -86,15 +75,12 @@ class AttachmentPipeline:
         size = get_file_size(local_name)
         checksum = item['checksum']
         referer = item['referer']
-        try:
-            self.pg_cursor.execute(insert_sql,
-                                   (item['title'], host, path, ext, size, local_name, checksum, referer))
-            self.pg_client.commit()
-        except Exception as e:
-            spider.logger.error(f'Error while submitting item {item} to pg, detail: {e}')
+
+        cursor.execute(insert_sql,
+                       (item['title'], host, path, ext, size, local_name, checksum, referer))
 
     def process_item(self, item: AttachmentItem, spider: scrapy.Spider):
         if item and isinstance(item, AttachmentItem):
-            self.submit_item(item, spider)
+            self.pg_pool.runInteraction(self.submit_item, item)
 
         return item
