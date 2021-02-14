@@ -41,7 +41,7 @@ class KiteDupeFilter(BaseDupeFilter):
 
     def open(self):
         size = 100
-        sql = 'SELECT DISTINCT host || path FROM public.pages WHERE index_flag = false'
+        sql = 'SELECT DISTINCT host || path FROM public.pages WHERE publish_date IS NOT NULL'
         with self.__pg_client.cursor() as cursor:
             cursor.execute(sql)
             b_continue = True
