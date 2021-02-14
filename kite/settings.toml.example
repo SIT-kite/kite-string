@@ -1,2 +1,0 @@
-[redis]
-connection_string="redis://user:password@localhost:6379"
