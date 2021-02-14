@@ -21,18 +21,65 @@ It's not ready for production environments.
 - Python 3.9.1
 - Scrapy 2.4.1
 - PyCharm 2020.3
+- PostgreSQL 13.2
+- zhparser
 
-数据库正在选型。
+## 快速指南
 
-## 运行方式
+### 配置
+
+请先修改 `kite/settings.py` 的配置选项：
+
+```python
+# 数据库配置选项
+PG_DATABASE = 'db'
+PG_USERNAME = 'user'
+PG_PASSWORD = 'password'
+PG_PORT = 5432
+PG_HOST = 'ip'
+
+# 附件存储路径
+FILES_STORE = 'download'
+```
+
+如有需要，可以在 `kite/spiders/public.py` 中修改已知的扩展名列表：
+
+```python
+page_postfix_set = {
+    'asp', 'aspx', 'jsp', 'do', 'htm', 'html', 'php', 'cgi', '/', 'portal', 'action'
+}
+
+attachment_postfix_set = {
+    # '7z', 'zip', 'rar',
+    'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx', 'pdf'
+}
+```
+
+根据经验，爬取上海应用技术大学网站时，请为下载目录 `FILES_STORE` 预留至少 4GB 空间，并确保数据库路径存有 200MB 空间。
+
+请尽量保证处于校园网环境中，否则超过 80% 的页面将无法访问。爬取速度受连接和程序性能瓶颈限制（没错，这个程序有严重设计不当的地方）， 调高 `settings.py` 中并发所带来的收益并不大。作者最近一次的抓取用时约 8
+小时，并发连接数 100~300。
+
+### 执行方式
 
 运行 kite 目录下 `run.py`
 
+### 修改
+
+如果你想针对其他网站抓取，你可能要修改 `public.py` - `PublicPageSpider` 中的 `starts_urls`，以及其 `parse` 函数中这样一段代码：
+
+```python
+if '.sit.edu.cn' not in url:
+    continue
+```
+
+祝你好运！
+
 ## 关于作者
 
-- 19级 @OneofFive-ops
-- 18级 @sunnysab
+- 19级 [@OneofFive-ops](https://github.com/OneofFive-ops)
+- 18级 [@sunnysab](https://sunnysab.cn)
 
 ## 开源协议
 
-仅供学习和交流使用
+项目代码基于 GPL v3 协议授权，[协议](LICENSE) 
