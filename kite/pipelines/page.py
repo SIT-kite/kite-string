@@ -49,19 +49,29 @@ def merge_paragraph(p_list: List[str]) -> List[str]:
     :param p_list: Paragraph list
     :return: Processed paragraph list
     """
+
+    def is_chinese_count_ge(s: str, c: int) -> bool:
+        __count = 0
+        for ch in s:
+            if u'\u4e00' < ch < u'\u9fa5':
+                __count += 1
+                if __count == c:
+                    return True
+        return False
+
     if len(p_list) <= 1:
         return p_list
 
     i, n = 1, len(p_list)
-    result = [p_list[1]]
+    result = [p_list[0]]
 
     while i < n:
-        if len(p_list[i]) < 5:
-            # Strip last paragraph and append current to it.
-            result[-1] = p_list[-1].rstrip() + p_list[i]
-        else:
+        if is_chinese_count_ge(p_list[i], 2):
             # Copy src to dst
             result.append(p_list[i])
+        else:
+            # Strip last paragraph and append current to it.
+            result[-1] = result[-1].rstrip() + p_list[i]
         i += 1
     return result
 
