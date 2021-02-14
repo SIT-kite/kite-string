@@ -51,7 +51,7 @@ def guess_link_type(path: str) -> str:
     }
 
     attachment_postfix_set = {
-        '7z', 'zip', 'rar',
+        # '7z', 'zip', 'rar',
         'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx', 'pdf'
     }
 
@@ -120,6 +120,7 @@ class PublicPageSpider(scrapy.Spider):
             elif link_type == 'attachment':  # link_type may equal to 'attachment'
                 item = AttachmentItem()
 
-                item['url'] = url
+                item['referer'] = response.url  # Url of current web page
+                item['url'] = url  # Url of attachment
                 item['title'] = title.replace('\xa0', '').replace(' ', '')  # Take file title from last page.
                 yield item

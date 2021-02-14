@@ -78,9 +78,9 @@ class AttachmentPipeline:
         insert_sql = \
             f'''
             INSERT INTO 
-                public.attachments (title, host, path, ext, size, local_name, checksum)
+                public.attachments (title, host, path, ext, size, local_name, checksum, referer)
             VALUES 
-                (%s, %s, %s, %s, %s, %s, %s);
+                (%s, %s, %s, %s, %s, %s, %s, %s);
             '''
 
         host, path = divide_url(item['url'])
@@ -88,9 +88,10 @@ class AttachmentPipeline:
         local_name = item['path']
         size = get_file_size(local_name)
         checksum = item['checksum']
+        referer = item['referer']
         try:
             self.pg_cursor.execute(insert_sql,
-                                   (item['title'], host, path, ext, size, local_name, checksum))
+                                   (item['title'], host, path, ext, size, local_name, checksum, referer))
             self.pg_client.commit()
         except Exception as e:
             spider.logger.error(f'Error while submitting item {item} to pg, detail: {e}')

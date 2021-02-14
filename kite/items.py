@@ -19,6 +19,8 @@ class StoreItem(scrapy.Item):
 class AttachmentItem(StoreItem):
     """ Attachment item """
 
+    # Referer
+    referer = scrapy.Field()
     # Size
     size = scrapy.Field()
     # Checksum
