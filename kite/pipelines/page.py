@@ -14,35 +14,31 @@ from . import open_database, get_database
 from .. import divide_url
 from ..items import PageItem
 
-DATE_PATTERN = re.compile(r'^(\d{4}-\d{1,2}-\d{1,2})$')
-DATE_SEP_WORDS = re.compile(r'[年月/]')
+URL_DATE_PATTERN = re.compile(r'/(20[012]\d/\d{4})/')
 
 
-def validate_date(date_str: str) -> str or None:
+def try_parse_date(url: str) -> str or None:
     """
-    Validate a date string.
-    :param date_str: date string like '2020-1-1', '2020年1月1日'...
-    :return: None if failed. Otherwise returns a valid date string.
-    """
-    if date_str:
-        date_str = DATE_SEP_WORDS.sub('-', date_str).replace('日', '')
-        if DATE_PATTERN.match(date_str):
-            return date_str
-    return None
-
-
-PAGE_DATE_PATTERN = re.compile(r'(?:(?:发布)?(?:时间|日期)[:：]\s?)(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}(日)?)\s')
-
-
-def find_out_publish_date(html: str) -> str or None:
-    """
-    Find publish date by regex in html, used to replace the parser in Gne library.
-    :param html: html
+    Try to parse date from Url.
+    :param url:
     :return:
     """
-    r = PAGE_DATE_PATTERN.search(html)
-    if r:
-        return r.group(1)
+
+    '''
+    For the CMS of Sit using now, date is usually hide in article url like:
+        '/2020/0909/c12570a187683/page.htm'
+        '/_t158/2017/0420/c4296a115862/page.htm'
+    It's easy to use regex to capture it.
+    '''
+    if url:
+        r = URL_DATE_PATTERN.search(url)
+        if r:
+            date_str = r.group(1)
+            year = date_str[:4]
+            month = date_str[-4:-2]
+            day = date_str[-2:]
+
+            return f'{year}-{month}-{day}'
 
 
 def merge_paragraph(p_list: List[str]) -> List[str]:
@@ -127,7 +123,7 @@ class PagePipeline:
                 print(e)
                 return
             item['title'] = result['title'] or item['title']
-            item['publish_time'] = validate_date(find_out_publish_date(content))
+            item['publish_time'] = try_parse_date(item['url'])
             item['content'] = '\n'.join(merge_paragraph(result['content'].split('\n')))
 
             self.submit_item(item, spider)
