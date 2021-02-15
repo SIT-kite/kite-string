@@ -107,11 +107,7 @@ class PagePipeline:
             else:
                 return
             content = content.decode(encoding, errors='replace')
-            try:
-                result = self.gne_extractor.extract(content)
-            except Exception as e:
-                print(e)
-                return
+            result = self.gne_extractor.extract(content)
             item['title'] = result['title'] or item['title']
             item['publish_time'] = try_parse_date(item['url'])
             item['content'] = '\n'.join(merge_paragraph(result['content'].split('\n')))
