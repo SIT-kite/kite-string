@@ -4,11 +4,9 @@
 # @File    : page.py
 
 import re
-from typing import List
 
-import chardet
 import scrapy
-from gne import GeneralNewsExtractor
+from lxml import etree
 
 from . import create_connection_pool
 from .. import divide_url
@@ -41,45 +39,9 @@ def try_parse_date(url: str) -> str or None:
             return f'{year}-{month}-{day}'
 
 
-def merge_paragraph(p_list: List[str]) -> List[str]:
-    """
-    Merge some single character to paragraph.
-    Some characters in a paragraph are in different <span> tags. Gne library usually separates them into
-    multiple paragraphs. This function is used to merge them.
-    :param p_list: Paragraph list
-    :return: Processed paragraph list
-    """
-
-    def is_chinese_count_ge(s: str, c: int) -> bool:
-        __count = 0
-        for ch in s:
-            if u'\u4e00' < ch < u'\u9fa5':
-                __count += 1
-                if __count == c:
-                    return True
-        return False
-
-    if len(p_list) <= 1:
-        return p_list
-
-    i, n = 1, len(p_list)
-    result = [p_list[0]]
-
-    while i < n:
-        if is_chinese_count_ge(p_list[i], 2):
-            # Copy src to dst
-            result.append(p_list[i])
-        else:
-            # Strip last paragraph and append current to it.
-            result[-1] = result[-1].rstrip() + p_list[i]
-        i += 1
-    return result
-
-
 class PagePipeline:
 
     def __init__(self):
-        self.gne_extractor = GeneralNewsExtractor()
         self.pg_pool = create_connection_pool()
 
     def submit_item(self, cursor, item: PageItem):
@@ -97,21 +59,12 @@ class PagePipeline:
     def process_item(self, item: PageItem, spider: scrapy.Spider):
         if item and isinstance(item, PageItem):
             ''' Extract main content from html. '''
-            content = item['content']
-            encoding = chardet.detect(content)['encoding']
-            # Temp code.
-            if encoding.startswith('gb'):
-                encoding = 'gb18030'
-            elif encoding.startswith('utf-'):
-                encoding = 'utf-8'
-            else:
-                return
-            content = content.decode(encoding, errors='replace')
-            result = self.gne_extractor.extract(content)
-            item['title'] = result['title'] or item['title']
-            item['publish_time'] = try_parse_date(item['url'])
-            item['content'] = '\n'.join(merge_paragraph(result['content'].split('\n')))
+            clean = lambda s: s.replace('\xa0', ' ').strip()
+            page = etree.HTML(item['content'])
+            paragraphs = [clean(p.xpath('string(.)')) for p in page.xpath('//p')]
 
+            item['publish_time'] = try_parse_date(item['url'])
+            item['content'] = '\n'.join(paragraphs)
             self.pg_pool.runInteraction(self.submit_item, item)
         else:
             return item

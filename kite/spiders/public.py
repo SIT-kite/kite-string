@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 import scrapy
+from readability import Document
 
 from .. import divide_url
 from ..items import AttachmentItem, PageItem
@@ -75,7 +76,7 @@ class PublicPageSpider(scrapy.Spider):
         """"
         Handler to the initial process.
         """
-        yield scrapy.Request(url=self.start_urls, callback=self.parse, cb_kwargs={'title': None})
+        yield scrapy.Request(url=self.start_urls, callback=self.parse)
 
     def parse(self, response: scrapy.http.Response, **kwargs):
         """
@@ -91,10 +92,11 @@ class PublicPageSpider(scrapy.Spider):
 
         # Note: response.headers is a caseless dict.
         this_page = PageItem()
+        article = Document(response.text)
         this_page['link_count'] = len(response.css('a[href]'))
-        this_page['title'] = kwargs['title']
+        this_page['title'] = article.title()
         this_page['url'] = response.url
-        this_page['content'] = response.body
+        this_page['content'] = article.summary()
 
         # Submit the this_page to pipeline.
         yield this_page
@@ -116,7 +118,7 @@ class PublicPageSpider(scrapy.Spider):
             link_type = guess_link_type(path)
             if link_type == 'page':
                 # Fetch next page
-                yield scrapy.Request(url=url, callback=self.parse, cb_kwargs={'title': title})
+                yield scrapy.Request(url=url, callback=self.parse)
 
             elif link_type == 'attachment':  # link_type may equal to 'attachment'
                 item = AttachmentItem()
