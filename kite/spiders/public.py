@@ -47,7 +47,7 @@ def guess_link_type(path: str) -> str:
     """
 
     page_postfix_set = {
-        'asp', 'aspx', 'jsp', 'do', 'htm', 'html', 'php', 'cgi', '/', 'portal', 'action'
+        'asp', 'aspx', 'jsp', 'psp', 'do', 'htm', 'html', 'php', 'cgi', '/', 'portal', 'action'
     }
 
     attachment_postfix_set = {
