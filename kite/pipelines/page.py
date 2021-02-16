@@ -56,15 +56,25 @@ class PagePipeline:
         cursor.execute(insert_sql,
                        (item['title'], host, path, item['publish_time'], item['link_count'], item['content']))
 
+    SPACES_PATTERN = re.compile(r'\n\n*')
+
     def process_item(self, item: PageItem, spider: scrapy.Spider):
         if item and isinstance(item, PageItem):
             ''' Extract main content from html. '''
-            clean = lambda s: s.replace('\xa0', ' ').strip()
+
+            def clean_p(s: str) -> str:
+                return s.replace('\xa0', ' ').strip()
+
+            def clean_all(s: str) -> str:
+                s = self.SPACES_PATTERN.sub('\n\n', s)
+                s = s.strip()
+                return s
+
             page = etree.HTML(item['content'])
-            paragraphs = [clean(p.xpath('string(.)')) for p in page.xpath('//p')]
+            paragraphs = [clean_p(p.xpath('string(.)')) for p in page.xpath('//p')]
 
             item['publish_time'] = try_parse_date(item['url'])
-            item['content'] = '\n'.join(paragraphs)
+            item['content'] = clean_all('\n'.join(paragraphs))
             self.pg_pool.runInteraction(self.submit_item, item)
         else:
             return item

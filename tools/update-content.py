@@ -7,6 +7,7 @@
 #
 
 import asyncio
+import re
 import time
 from typing import List, Dict, Tuple
 from urllib.parse import urlparse
@@ -52,9 +53,17 @@ async def request(url: str) -> bytes or None:
     return html
 
 
+SPACES_PATTERN = re.compile(r'\n\n*')
+
+
 def process_content(body: bytes) -> Tuple[str, str]:
-    def clean(s) -> str:
+    def clean_p(s: str) -> str:
         return s.replace('\xa0', ' ').strip()
+
+    def clean_all(s: str) -> str:
+        s = SPACES_PATTERN.sub('\n\n', s)
+        s = s.strip()
+        return s
 
     try:
         encoding = 'utf-8'
@@ -65,9 +74,9 @@ def process_content(body: bytes) -> Tuple[str, str]:
 
     doc = Document(html)
     page = etree.HTML(doc.summary())
-    paragraphs = [clean(p.xpath('string(.)')) for p in page.xpath('//p')]
+    paragraphs = [clean_p(p.xpath('string(.)')) for p in page.xpath('//p')]
 
-    return doc.title(), '\n'.join(paragraphs)
+    return doc.title(), clean_all('\n'.join(paragraphs))
 
 
 async def create_db_pool() -> asyncpg.Pool:
