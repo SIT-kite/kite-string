@@ -40,8 +40,14 @@ class PageItem(StoreItem):
     link_count = scrapy.Field()
 
 
-class OaAnnouncementItem(scrapy.Item):
-    filename = scrapy.Field()
-    fileurl = scrapy.Field()
-    filesource = scrapy.Field()
-    filebody = scrapy.Field()
+class NoticeItem(StoreItem):
+    """ Notice item in OA website. """
+
+    # Notice content
+    content = scrapy.Field()
+    # Publish date
+    publish_time = scrapy.Field()
+    # Sort
+    sort = scrapy.Field()
+    # Publish department
+    department = scrapy.Field()
