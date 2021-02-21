@@ -7,12 +7,16 @@ import re
 
 import scrapy
 from lxml import etree
+from readability import Document
 
 from . import create_connection_pool
+from .. import divide_url
 from ..items import NoticeItem
 
 UUID_PATTERN = re.compile(r'bulletinId=([0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12})')
 DATE_PATTERN = re.compile(r'发布时间：(\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2})')
+DEPT_PATTERN = re.compile(r'发布部门：(.*?) [<|]')
+AUTHOR_PATTERN = re.compile(r'title="点击查看相关信息">(.*?)</a>')
 
 
 def _reformat_publish_time(time_string: str) -> str:
@@ -28,10 +32,16 @@ def _find_publish_time(html: str) -> str:
         return _reformat_publish_time(r.group(1))
 
 
-def _parse_uuid_from_url(url: str) -> str:
-    r = UUID_PATTERN.search(url)
+def _find_department(html: str) -> str:
+    r = DEPT_PATTERN.search(html)
     if r:
-        return r.group(1)
+        return r.group(1).strip()
+
+
+def _find_author(html: str) -> str:
+    r = AUTHOR_PATTERN.search(html)
+    if r:
+        return r.group(1).strip()
 
 
 class NoticePipeline:
@@ -43,14 +53,16 @@ class NoticePipeline:
     def submit_item(self, cursor, item: NoticeItem):
         insert_sql = \
             '''
-            -- (_id uuid, _title text, _publish_time timestamp with time zone, _department text, _publisher text, 
-            --  _content text)
+            -- _url text, _title text, _publish_time timestamp with time zone, _department text, _author text, _sort text, 
+            -- _content text)
             
-            CALL public.submit_notice(%s, %s, %s, %s, %s, %s);
+            CALL public.submit_notice(%s, %s, %s, %s, %s, %s, %s);
             '''
-        notice_id = _parse_uuid_from_url(item['url'])
+        host, path = divide_url(item['url'])
+        url = host + path
         cursor.execute(insert_sql,
-                       (notice_id, item['title'], item['publish_time'], '', '', item['content']))
+                       (url, item['title'], item['publish_time'], item['department'], item['author'], item['sort'],
+                        item['content']))
 
     def process_item(self, item: NoticeItem, spider: scrapy.Spider):
         if item and isinstance(item, NoticeItem):
@@ -65,11 +77,14 @@ class NoticePipeline:
                 return s
 
             """ Expel non-UTF8 characters. """
-            content = item['content'].encode('utf-8')
-            content = content.decode('utf-8', 'replace')
+            content = item['content'].decode('utf-8', 'replace')
 
+            item['author'] = _find_author(content)
+            item['department'] = _find_department(content)
             item['publish_time'] = _find_publish_time(content)
-            page = etree.HTML(content)
+
+            article = Document(content, handle_failures=None)
+            page = etree.HTML(article.summary())
             paragraphs = [clean_p(p.xpath('string(.)')) for p in page.xpath('//p')]
             item['content'] = clean_all('\n'.join(paragraphs))
             self.pg_pool.runInteraction(self.submit_item, item)

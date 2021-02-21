@@ -47,6 +47,8 @@ class PageItem(StoreItem):
 class NoticeItem(StoreItem):
     """ Notice item in OA website. """
 
+    # Author, the teacher publisher
+    author = scrapy.Field()
     # Notice content
     content = scrapy.Field()
     # Publish time

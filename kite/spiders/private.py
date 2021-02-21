@@ -1,4 +1,3 @@
-from readability import Document
 from scrapy.utils.project import get_project_settings
 
 from . import *
@@ -60,13 +59,11 @@ class OaPageSpider(scrapy.Spider):
             pass
 
     def parse_notice_detail(self, response, **kwargs):
-        article = Document(response.text, handle_failures=None)
-
         title = response.xpath('//div[@class="bulletin-title"]/text()').get()
         item = NoticeItem()
         item['url'] = response.url
-        item['title'] = title.strip() or ''
-        item['content'] = article.summary()
+        item['title'] = title.strip() if title else ''
+        item['content'] = response.body
         item['sort'] = kwargs['sort']
         yield item
 
