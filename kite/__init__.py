@@ -13,10 +13,13 @@ def divide_url(url: str) -> Tuple[str, str]:
     :return: a tuple like ('sit.edu.cn', '/index.htm')
     """
     result = urlparse(url)
-    host, path = result.netloc, result.path
+    host, path, query = result.netloc, result.path, result.query
 
     if len(path) == 0:
         path = '/'
+    if len(query) != 0:
+        path = path + '?' + query
+
     return host, path
 
 
