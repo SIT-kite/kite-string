@@ -66,6 +66,7 @@ DEFAULT_REQUEST_HEADERS = {
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     'kite.pipelines.PagePipeline': 300,
+    'kite.pipelines.NoticePipeline': 300,
     'kite.pipelines.FileCachingPipeline': 301,
     'kite.pipelines.AttachmentPipeline': 302,
 }

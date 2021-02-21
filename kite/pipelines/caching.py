@@ -15,7 +15,12 @@ class FileCachingPipeline(FilesPipeline):
     """
 
     def get_media_requests(self, item: StoreItem, info):
-        if item:
+        if not item:
+            return None
+
+        if 'cookies' in item:
+            yield scrapy.Request(item['url'], meta={'title': item['title']}, cookies=item['cookies'])
+        else:
             yield scrapy.Request(item['url'], meta={'title': item['title']})
 
     def item_completed(self, results, item: StoreItem, info):
