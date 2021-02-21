@@ -40,13 +40,14 @@ def try_parse_date(url: str) -> str or None:
 
 
 class PagePipeline:
+    SPACES_PATTERN = re.compile(r'\n\n*')
 
     def __init__(self):
         self.pg_pool = create_connection_pool()
 
     def submit_item(self, cursor, item: PageItem):
         insert_sql = \
-            f'''
+            '''
             -- (_title text, _host text, _path text, _publish_date date, _link_count integer, _content text)
             
             CALL public.submit_page(%s, %s, %s, %s, %s, %s);
@@ -54,9 +55,7 @@ class PagePipeline:
 
         host, path = divide_url(item['url'])
         cursor.execute(insert_sql,
-                       (item['title'], host, path, item['publish_time'], item['link_count'], item['content']))
-
-    SPACES_PATTERN = re.compile(r'\n\n*')
+                       (item['title'], host, path, item['publish_date'], item['link_count'], item['content']))
 
     def process_item(self, item: PageItem, spider: scrapy.Spider):
         if item and isinstance(item, PageItem):
@@ -73,7 +72,7 @@ class PagePipeline:
             page = etree.HTML(item['content'])
             paragraphs = [clean_p(p.xpath('string(.)')) for p in page.xpath('//p')]
 
-            item['publish_time'] = try_parse_date(item['url'])
+            item['publish_date'] = try_parse_date(item['url'])
             item['content'] = clean_all('\n'.join(paragraphs))
             self.pg_pool.runInteraction(self.submit_item, item)
         else:

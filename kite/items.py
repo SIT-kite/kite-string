@@ -29,7 +29,7 @@ class AttachmentItem(StoreItem):
     path = scrapy.Field()
     # Private flag
     private = scrapy.Field()
-    # Cookie field, for the attachments from myportal.
+    # Cookie field, for the attachments from portal.
     cookie = scrapy.Field()
 
 
@@ -38,8 +38,8 @@ class PageItem(StoreItem):
 
     # File content
     content = scrapy.Field()
-    # Publish time
-    publish_time = scrapy.Field()
+    # Publish date
+    publish_date = scrapy.Field()
     # Link count. Used to analyze whether the page is an article or not.
     link_count = scrapy.Field()
 
@@ -49,7 +49,7 @@ class NoticeItem(StoreItem):
 
     # Notice content
     content = scrapy.Field()
-    # Publish date
+    # Publish time
     publish_time = scrapy.Field()
     # Sort
     sort = scrapy.Field()
