@@ -61,7 +61,7 @@ def _post_login_request(session: requests.Session, form: dict):
     elif response.status_code == 200:  # Login failed
         error_page = etree.HTML(response.text)
         error_msg = error_page.xpath("//span[@id='msg']/text()")[0]
-        return error_msg
+        return str(error_msg)
 
     response.raise_for_status()
 

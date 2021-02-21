@@ -36,10 +36,11 @@ class OaPageSpider(scrapy.Spider):
 
         self.log("Login successfully.")
         cookies = login_result.get_dict('myportal.sit.edu.cn', '/')
-        for _, param in self.notice_sort:
-            url = self._get_sort_page(param, 1)
+        for sort, sort_code in self.notice_sort:
+            url = self._get_sort_page(sort_code, 1)
             # Request lists of notice whose sort in self.notice_sort
             yield scrapy.Request(url=url, callback=self.parse, cookies=cookies, dont_filter=True,
+                                 cb_kwargs={'sort': sort},
                                  meta={'cookies': cookies})  # Use meta to transfer cookies to parse function.
 
     def parse(self, response, **kwargs):
@@ -61,9 +62,10 @@ class OaPageSpider(scrapy.Spider):
     def parse_notice_detail(self, response, **kwargs):
         article = Document(response.text, handle_failures=None)
 
+        title = response.xpath('//div[@class="bulletin-title"]/text()').get()
         item = NoticeItem()
         item['url'] = response.url
-        item['title'] = response.xpath('//div[@class="bulletin-title"]/text()')[0]
+        item['title'] = title.strip() or ''
         item['content'] = article.summary()
         item['sort'] = kwargs['sort']
         yield item
@@ -76,7 +78,7 @@ class OaPageSpider(scrapy.Spider):
             item = AttachmentItem()
 
             item['referer'] = response.url  # Url of current notice
-            item['url'] = url  # Url of attachment
+            item['url'] = response.urljoin(url)  # Url of attachment
             item['title'] = title.replace('\xa0', '').replace(' ', '')  # Take file title from last page.
             item['cookies'] = cookies
             yield item
@@ -87,4 +89,5 @@ class OaPageSpider(scrapy.Spider):
 
         for title, url in link_list:
             url = response.urljoin(url)
-            yield scrapy.Request(url=url, cookies=cookies, meta={'cookies': cookies}, callback=self.parse)
+            yield scrapy.Request(url=url, cookies=cookies, meta={'cookies': cookies}, callback=self.parse,
+                                 cb_kwargs=kwargs)

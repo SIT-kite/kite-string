@@ -29,8 +29,8 @@ class AttachmentItem(StoreItem):
     path = scrapy.Field()
     # Private flag
     private = scrapy.Field()
-    # Cookie field, for the attachments from portal.
-    cookie = scrapy.Field()
+    # Cookies field, for the attachments from portal.
+    cookies = scrapy.Field()
 
 
 class PageItem(StoreItem):
