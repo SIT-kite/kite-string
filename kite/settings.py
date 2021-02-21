@@ -31,7 +31,7 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 64
 CONCURRENT_REQUESTS_PER_IP = 64
 
 # Disable cookies (enabled by default)
-COOKIES_ENABLED = False
+COOKIES_ENABLED = True
 
 # Disable Telnet Console (enabled by default)
 TELNETCONSOLE_ENABLED = False
@@ -107,3 +107,6 @@ PG_USERNAME = 'user'
 PG_PASSWORD = 'password'
 PG_PORT = 5432
 PG_HOST = 'ip'
+
+OA_USER = '学号'
+OA_PASSWD = '密码'

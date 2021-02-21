@@ -27,6 +27,10 @@ class AttachmentItem(StoreItem):
     checksum = scrapy.Field()
     # File path
     path = scrapy.Field()
+    # Private flag
+    private = scrapy.Field()
+    # Cookie field, for the attachments from myportal.
+    cookie = scrapy.Field()
 
 
 class PageItem(StoreItem):
