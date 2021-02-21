@@ -5,10 +5,11 @@
 
 import requests
 from lxml import etree
+from requests.sessions import RequestsCookieJar
 
 from aes import *
 
-_LOGIN_URL = 'https://authserver.sit.edu.cn/authserver/login?service=http%3A%2F%2Fmyportal.sit.edu.cn%2F'
+_LOGIN_URL = 'https://authserver.sit.edu.cn/authserver/login'
 
 _DEFAULT_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:85.0) Gecko/20100101 Firefox/82.0',
@@ -65,20 +66,25 @@ def _post_login_request(session: requests.Session, form: dict):
     response.raise_for_status()
 
 
-def login(user: str, passwd: str) -> dict or str:
+def login(user: str, passwd: str, redirect: str = None) -> RequestsCookieJar or str:
     session = requests.Session()
 
     page = _get_login_page(session)
     form = _get_login_parameters(page, user, passwd)
     result = _post_login_request(session, form)
+
     if result != 'OK':
         session.close()
         return result
 
+    if redirect:
+        r = session.get(_LOGIN_URL + '?service=' + redirect, headers=_DEFAULT_HEADERS, timeout=3)
+        r.raise_for_status()
+
     session.close()
-    return session.cookies.get_dict('authserver.sit.edu.cn', '/')
+    return session.cookies
 
 
 if __name__ == '__main__':
-    r = login('1234', 'password')
-    print(r)
+    login_result = login('1234', 'password')
+    print(login_result)
