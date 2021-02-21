@@ -1,3 +1,7 @@
+"""
+    本代码摘自知乎专栏
+    原文：https://zhuanlan.zhihu.com/p/184968023
+"""
 import base64
 from math import floor
 from random import random
