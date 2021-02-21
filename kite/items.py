@@ -38,3 +38,10 @@ class PageItem(StoreItem):
     publish_time = scrapy.Field()
     # Link count. Used to analyze whether the page is an article or not.
     link_count = scrapy.Field()
+
+
+class OaAnnouncementItem(scrapy.Item):
+    filename = scrapy.Field()
+    fileurl = scrapy.Field()
+    filesource = scrapy.Field()
+    filebody = scrapy.Field()
