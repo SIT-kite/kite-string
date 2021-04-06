@@ -102,6 +102,12 @@ if '.sit.edu.cn' not in url:
 
 祝你好运！
 
+## Q & A
+
+1. Windows 下无法使用 pip 直接安装 Twisted 库怎么办？
+
+可以去 Pypi 网站上 [下载](https://pypi.org/project/Twisted/#files) 一个编译好的包安装。
+
 ## 关于作者
 
 - 19级 [@OneofFive-ops](https://github.com/OneofFive-ops)
