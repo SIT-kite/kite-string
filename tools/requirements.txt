@@ -1,0 +1,3 @@
+# Pdf 文件处理相关包，占空间还挺大的...
+wand
+pdfminer3k
