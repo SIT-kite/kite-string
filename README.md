@@ -17,11 +17,12 @@
 
 ## 开发环境
 
-主要开发工具（或语言、库等）版本如下：
+主要开发和生产环境软件（及语言库）版本如下：
 
 - Windows 10
 - Ubuntu 20.04 LTS
-- Python 3.9.1
+- FreeBSD 12.2
+- Python 3.7, 3.9
 - Scrapy 2.4.1
 - PyCharm 2020.3
 - PostgreSQL 13.2
@@ -104,15 +105,90 @@ if '.sit.edu.cn' not in url:
 
 ## Q & A
 
-1. Windows 下无法使用 pip 直接安装 Twisted 库怎么办？
+1. Windows 下无法使用 `pip` 直接安装 `Twisted` 库怎么办？  
+   可以去 Pypi 网站上 [下载](https://pypi.org/project/Twisted/#files) 一个编译好的包安装。
 
-可以去 Pypi 网站上 [下载](https://pypi.org/project/Twisted/#files) 一个编译好的包安装。
+## FreeBSD 下安装指南
+
+1. `lxml` 库安装报错 `Please make sure the libxml2 and libxslt development packages are installed.`
+
+   可以使用 `pkg` 安装这两个包，再 `pip install lxml` 即可。
+
+
+2. `psycopg2` 安装报错: ` pg_config executable not found.`
+
+   使用 `pkg` 安装 `postgresql13-client` 或 `py37-psycopg2`。 由于线上数据库使用了 `postgresql13`，而 `pkg` 包中依赖的还是版本为 `12`
+   的客户端，所以还是不要用 `pkg` 安装 `psycopg2` 比较好。
+
+    ```shell
+    sudo pkg install postgresql13-client
+    pip install psycopg2
+    ```
+   （小技巧：使用 `pkg search` 可以搜索相关的包。如，等到 FreeBSD 普遍使用 python38, python39 时，这些包名也会相应改变。）
+
+3. `cryptography` 安装报错: `can't find Rust compiler`。
+
+   这是因为一个 OpenSSL 相关的库依赖了 `cryptography` 库。 这里尝试使用 `pkg` 安装：
+   ```shell
+   sudo pkg install py37-cryptography (划掉
+   ```
+   但是会带来问题：全局环境中安装的包，和虚拟环境中安装的，并不互通。也就是说，使用 `pkg` 安装后，虚拟环境中不存在对应包。 这时候，要么放弃虚拟环境，要么安装 Rust 编译环境。其实 Rust 编译环境也很好装：
+
+   ```shell
+   sudo pkg install rust
+   ```
+
+   pkg 源中的 rust 版本总体还是蛮新的，可能会晚一个版本。相比 linux 下 apt 源更新的速度好多了。 现在再用 `pip` 安装即可。
+
+4. 运行时报错
+
+   ```shell
+   2021-04-06 16:23:33 [twisted] CRITICAL:
+   Traceback (most recent call last):
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/twisted/internet/defer.py", line 1445, in _inlineCallbacks
+   result = current_context.run(g.send, result)
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/scrapy/crawler.py", line 87, in crawl
+   self.engine = self._create_engine()
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/scrapy/crawler.py", line 101, in _create_engine
+   return ExecutionEngine(self, lambda _: self.stop())
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/scrapy/core/engine.py", line 67, in __init__
+   self.scheduler_cls = load_object(self.settings['SCHEDULER'])
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/scrapy/utils/misc.py", line 62, in load_object
+   mod = import_module(module)
+   File "/usr/local/lib/python3.7/importlib/__init__.py", line 127, in import_module
+   return _bootstrap._gcd_import(name[level:], package, level)
+   File "<frozen importlib._bootstrap>", line 1006, in _gcd_import
+   File "<frozen importlib._bootstrap>", line 983, in _find_and_load
+   File "<frozen importlib._bootstrap>", line 967, in _find_and_load_unlocked
+   File "<frozen importlib._bootstrap>", line 677, in _load_unlocked
+   File "<frozen importlib._bootstrap_external>", line 728, in exec_module
+   File "<frozen importlib._bootstrap>", line 219, in _call_with_frames_removed
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/scrapy/core/scheduler.py", line 7, in <module>
+   from queuelib import PriorityQueue
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/queuelib/__init__.py", line 1, in <module>
+   from queuelib.queue import FifoDiskQueue, LifoDiskQueue
+   File "/home/sunnysab/kite-string/venv/lib/python3.7/site-packages/queuelib/queue.py", line 5, in <module>
+   import sqlite3
+   File "/usr/local/lib/python3.7/sqlite3/__init__.py", line 23, in <module>
+   from sqlite3.dbapi2 import *
+   File "/usr/local/lib/python3.7/sqlite3/dbapi2.py", line 27, in <module>
+   from _sqlite3 import *
+   ModuleNotFoundError: No module named '_sqlite3'
+   ```
+
+观察到出错的 `sqlite3` 位于 `/usr/local/lib/python3.7/sqlite3` 下，可以使用 `pkg` 重装 `sqlite3`
+模块。执行 `sudo pkg install py37-sqlite3-3.7.10_7
+` （视实际情况定）即可解决。
 
 ## 关于作者
 
-- 19级 [@OneofFive-ops](https://github.com/OneofFive-ops)
-- 18级 [@sunnysab](https://sunnysab.cn)
+- 19级 化工 [@OneofFive-ops](https://github.com/OneofFive-ops)   
+  项目各模块的奠基人 :D
+- 18级 计算机 [@sunnysab](https://sunnysab.cn)  
+  项目重构、维护，数据库和分词的对接
+- 18级 计算机 [@Wanfengcxz](https://github.com/wanfengcxz)  
+  PDF 文件解析
 
 ## 开源协议
 
-项目代码基于 GPL v3 协议授权，[协议](LICENSE) 
+项目代码基于 GPL v3 协议授权，[协议全文](LICENSE) 
