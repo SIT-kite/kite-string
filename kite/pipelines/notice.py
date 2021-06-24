@@ -53,7 +53,7 @@ class NoticePipeline:
     def submit_item(self, cursor, item: NoticeItem):
         insert_sql = \
             '''
-            -- _url text, _title text, _publish_time timestamp with time zone, _department text, _author text, _sort text, 
+            -- (_url text, _title text, _publish_time timestamp with time zone, _department text, _author text, _sort text, 
             -- _content text)
             
             CALL public.submit_notice(%s, %s, %s, %s, %s, %s, %s);

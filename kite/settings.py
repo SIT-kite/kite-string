@@ -65,6 +65,7 @@ DEFAULT_REQUEST_HEADERS = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
+    'kite.pipelines.BookPipeline': 300,
     'kite.pipelines.PagePipeline': 300,
     'kite.pipelines.NoticePipeline': 300,
     'kite.pipelines.FileCachingPipeline': 301,

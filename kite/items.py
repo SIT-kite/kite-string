@@ -57,3 +57,34 @@ class NoticeItem(StoreItem):
     sort = scrapy.Field()
     # Publish department
     department = scrapy.Field()
+
+
+class BookItem(StoreItem):
+    """Book item in library."""
+
+    # Book id
+    book_id = scrapy.Field()
+    # Book isbn
+    isbn = scrapy.Field()
+    # Book price
+    price = scrapy.Field()
+    # Book language
+    language = scrapy.Field()
+    # Author of book
+    author = scrapy.Field()
+    # Publisher place
+    publisher_place = scrapy.Field()
+    # Publishing house
+    publishing_house = scrapy.Field()
+    # Publication date
+    publication_date = scrapy.Field()
+    # Book form
+    form = scrapy.Field()
+    # Summary of book
+    summary = scrapy.Field()
+    # Theme of book
+    theme = scrapy.Field()
+    # Chinese library book classification
+    classification = scrapy.Field()
+    # Edition of book
+    edition = scrapy.Field()
