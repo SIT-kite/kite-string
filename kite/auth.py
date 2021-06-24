@@ -7,7 +7,7 @@ import requests
 from lxml import etree
 from requests.sessions import RequestsCookieJar
 
-from aes import *
+from .aes import *
 
 _LOGIN_URL = 'https://authserver.sit.edu.cn/authserver/login'
 
