@@ -11,15 +11,15 @@ class BookPipeline:
 
     def submit_item(self, cursor, item: BookItem):
         insert_sql = \
-            '''--(_title text, _url text, _book_id integer, _isbn text, _price text, _languages text, 
+            '''--(_title text, _book_id integer, _isbn text, _price text, _languages text, 
             --_author text, --_publisher_place text, _publishing_house text, _publication_date text, _form text, 
             --_summary text, --_theme text, _classification text, _edition text) 
             
-            CALL public.submit_book(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+            CALL public.submit_book(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             '''
 
         cursor.execute(insert_sql,
-                       (item['title'], item['url'], item['book_id'], item['isbn'], item['price'], item['language'],
+                       (item['title'], item['book_id'], item['isbn'], item['price'], item['language'],
                         item['author'], item['publisher_place'], item['publishing_house'], item['publication_date'],
                         item['form'], item['summary'], item['theme'], item['classification'], item['edition']))
 

@@ -4,28 +4,21 @@ import scrapy
 from ..items import BookItem
 
 
-def init_item(item):
-    item['title'] = ''
-    item['url'] = ''
-    item['book_id'] = ''
-    item['isbn'] = ''
-    item['price'] = ''
-    item['language'] = ''
-    item['author'] = ''
-    item['publisher_place'] = ''
-    item['publication_date'] = ''
-    item['publishing_house'] = ''
-    item['form'] = ''
-    item['summary'] = ''
-    item['theme'] = ''
-    item['classification'] = ''
-    item['edition'] = ''
+def new_book_item(d_i: dict) -> BookItem:
+    book_item = BookItem()
+    for key, value in d_i.items():
+        book_item[value] = ''
+    return book_item
 
 
 def add_item(item, _kv: dict, d_i: dict):
     for key, value in d_i.items():
         if key in _kv:
             item[value] = _kv[key]
+
+
+def remove_space(s: str) -> str:
+    return s.replace('\n', '').replace('\r', '').replace('\t', '').strip()
 
 
 def get_links(response):
@@ -37,61 +30,60 @@ def get_links(response):
 def get_title(_kv: dict, response):
     title = response.xpath('//h2/text()').get()
     if title is None:
-        title = response.xpath('//tr/td[@class="rightTD"]/a[@href]/text()').get().strip()
+        title = remove_space(response.xpath('//tr/td[@class="rightTD"]/a[@href]/text()').get())
+
     _kv['标题'] = title
 
 
 def get_isbn_and_price(_kv: dict, response):
-    isbn_and_price = response.xpath('string(.)').get().replace('\n', '').replace('\r', '') \
-        .replace('\t', '').strip()
+    isbn_and_price = remove_space(response.xpath('string(.)').get())
     isbn_or_none = re.search(r"(\d-?){13}|(\d-?){10}|(\d-?){8}", isbn_and_price)
-    if isbn_or_none is not None:
+    isbn = ''
+    if isbn_or_none:
         isbn = isbn_or_none.group()
-    else:
-        isbn = ''
     price_with_word = re.search(r"价格：[\sa-zA-Z0-9.]+", isbn_and_price)
-    if price_with_word is not None:
+    price = ''
+    if price_with_word:
         price = re.sub('[价格：]', '', price_with_word.group())
-    else:
-        price = ''
-    _kv['ISBN'] = isbn
-    _kv['价格'] = price
+    if 'ISBN' not in _kv:
+        _kv['ISBN'] = isbn
+    if '价格' not in _kv:
+        _kv['价格'] = price
 
 
 def get_language(_kv: dict, response):
-    language = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    language = remove_space(response.xpath('string(.)').get())
+
     _kv['语种'] = language
 
 
 def get_author(_kv: dict, response):
-    author_and_book = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    author_and_book = remove_space(response.xpath('string(.)').get())
     author_with_symbol = re.search(r"/[a-zA-Z\u4e00-\u9fa5().,·\s]+", author_and_book)
-    if author_with_symbol is not None:
+    author = ''
+    if author_with_symbol:
         author = re.sub('[/]', '', author_with_symbol.group())
-    else:
-        author = ''
+
     _kv['作者'] = author
 
 
 def get_publish(_kv: dict, response):
-    publish = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    publish = remove_space(response.xpath('string(.)').get())
     publisher_place_without_deal = re.search('出版地：[\u4e00-\u9fa5]+', publish)
-    if publisher_place_without_deal is not None:
+    publisher_place = ''
+    if publisher_place_without_deal:
         if publisher_place_without_deal.group() == '出版地：出版社':
             publisher_place = ''
         else:
             publisher_place = re.sub('[出版地：]', '', publisher_place_without_deal.group())
-    else:
-        publisher_place = ''
 
-    publishing_house_without_deal = response.xpath('a/text()').get()
-    publishing_house = publishing_house_without_deal.replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    publishing_house = remove_space(response.xpath('a/text()').get())
 
     publication_date_without_deal = re.search(r'\d.+', publish)
-    if publication_date_without_deal is not None:
+    publication_date = ''
+    if publication_date_without_deal:
         publication_date = publication_date_without_deal.group()
-    else:
-        publication_date = ''
+
     _kv['出版地'] = publisher_place
     _kv['出版社'] = publishing_house
     _kv['出版日期'] = publication_date
@@ -99,33 +91,33 @@ def get_publish(_kv: dict, response):
 
 def get_form(_kv: dict, response):
     form = "".join(response.xpath('string(.)').get().strip().split())
+
     _kv['载体形态'] = form
 
 
 def get_summary(_kv: dict, response):
     summary = response.xpath('string(.)').get().strip()
+
     _kv['摘要'] = summary
 
 
 def get_theme(_kv: dict, response):
-    theme = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    theme = remove_space(response.xpath('string(.)').get())
     if '主题' not in _kv:
         _kv['主题'] = theme
 
 
 def get_classification_and_edition(_kv: dict, response):
-    classification_edition = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t',
-                                                                                                           '').strip()
+    classification_edition = remove_space(response.xpath('string(.)').get())
     classification_or_none = re.search(r"[a-zA-Z0-9.:-]+", classification_edition)
-    if classification_or_none is not None:
+    classification = ''
+    if classification_or_none:
         classification = classification_or_none.group()
-    else:
-        classification = ''
     edition_with_word = re.search(r"版次：[\d]+", classification_edition)
-    if edition_with_word is not None:
+    edition = ''
+    if edition_with_word:
         edition = re.sub('[版次：]', '', edition_with_word.group())
-    else:
-        edition = ''
+
     _kv['分类'] = classification
     _kv['版次'] = edition
 
@@ -197,7 +189,6 @@ class LibraryPageSpider(scrapy.Spider):
             'ISSN:': get_isbn_and_price,
             '语种:': get_language,
             '题名/责任者:': get_author,
-            '著者:': get_author,
             '出版发行:': get_publish,
             '载体形态:': get_form,
             '摘要:': get_summary,
@@ -210,7 +201,6 @@ class LibraryPageSpider(scrapy.Spider):
         # The dictionary's key to item's label
         dict_item = {
             '标题': 'title',
-            'url': 'url',
             '书号': 'book_id',
             'ISBN': 'isbn',
             '价格': 'price',
@@ -228,7 +218,6 @@ class LibraryPageSpider(scrapy.Spider):
 
         # Analysis the web
         get_title(kv, response)
-        kv['url'] = response.url
         book_id = int(response.url.replace('http://210.35.66.106/opac/book/', ''))
         kv['书号'] = book_id
 
@@ -240,8 +229,7 @@ class LibraryPageSpider(scrapy.Spider):
                 function(kv, value)
 
         # Write the item by dictionary's value
-        item = BookItem()
-        init_item(item)
+        item = new_book_item(dict_item)
         add_item(item, kv, dict_item)
         yield item
 
