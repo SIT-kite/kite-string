@@ -4,24 +4,47 @@ import scrapy
 from ..items import BookItem
 
 
+def init_item(item):
+    item['title'] = ''
+    item['url'] = ''
+    item['book_id'] = ''
+    item['isbn'] = ''
+    item['price'] = ''
+    item['language'] = ''
+    item['author'] = ''
+    item['publisher_place'] = ''
+    item['publication_date'] = ''
+    item['publishing_house'] = ''
+    item['form'] = ''
+    item['summary'] = ''
+    item['theme'] = ''
+    item['classification'] = ''
+    item['edition'] = ''
+
+
+def add_item(item, _kv: dict, d_i: dict):
+    for key, value in d_i.items():
+        if key in _kv:
+            item[value] = _kv[key]
+
+
 def get_links(response):
     book_links = response.xpath('//span[@class="bookmetaTitle"]/a/@href').getall()
     list_links = response.xpath('//div[@class="meneame"][1]/a/@href').getall()
     return book_links + list_links
 
 
-def get_title(response):
+def get_title(_kv: dict, response):
     title = response.xpath('//h2/text()').get()
     if title is None:
         title = response.xpath('//tr/td[@class="rightTD"]/a[@href]/text()').get().strip()
-    return title
+    _kv['标题'] = title
 
 
-def get_isbn_and_price(response, num):
-    isbn_and_price_without_deal = response.xpath('//tr[{}]/td[@class="rightTD"]'.format(num))
-    isbn_and_price = isbn_and_price_without_deal.xpath('string(.)').get().replace('\n', '').replace('\r', '')\
+def get_isbn_and_price(_kv: dict, response):
+    isbn_and_price = response.xpath('string(.)').get().replace('\n', '').replace('\r', '') \
         .replace('\t', '').strip()
-    isbn_or_none = re.search(r"(\d-?){13}|(\d-?){10}", isbn_and_price)
+    isbn_or_none = re.search(r"(\d-?){13}|(\d-?){10}|(\d-?){8}", isbn_and_price)
     if isbn_or_none is not None:
         isbn = isbn_or_none.group()
     else:
@@ -31,31 +54,27 @@ def get_isbn_and_price(response, num):
         price = re.sub('[价格：]', '', price_with_word.group())
     else:
         price = ''
-    return isbn, price
+    _kv['ISBN'] = isbn
+    _kv['价格'] = price
 
 
-def get_language(response, num):
-    language_without_deal = response.xpath('//tr[{}]/td[@class="rightTD"]'.format(num))
-    language = language_without_deal.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '')\
-        .strip()
-    return language
+def get_language(_kv: dict, response):
+    language = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    _kv['语种'] = language
 
 
-def get_author(response, num):
-    author_and_book_without_deal = response.xpath('//tr[{}]/td[@class="rightTD"]'.format(num))
-    author_and_book = author_and_book_without_deal.xpath('string(.)').get().replace('\n', '').replace('\r', '')\
-        .replace('\t', '').strip()
+def get_author(_kv: dict, response):
+    author_and_book = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
     author_with_symbol = re.search(r"/[a-zA-Z\u4e00-\u9fa5().,·\s]+", author_and_book)
     if author_with_symbol is not None:
         author = re.sub('[/]', '', author_with_symbol.group())
     else:
         author = ''
-    return author
+    _kv['作者'] = author
 
 
-def get_publish(response, num):
-    publish_without_process = response.xpath('//tr[{}]/td[@class="rightTD"]'.format(num))
-    publish = publish_without_process.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+def get_publish(_kv: dict, response):
+    publish = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
     publisher_place_without_deal = re.search('出版地：[\u4e00-\u9fa5]+', publish)
     if publisher_place_without_deal is not None:
         if publisher_place_without_deal.group() == '出版地：出版社':
@@ -65,7 +84,7 @@ def get_publish(response, num):
     else:
         publisher_place = ''
 
-    publishing_house_without_deal = response.xpath('//tr[{}]/td[@class="rightTD"]/a/text()'.format(num)).get()
+    publishing_house_without_deal = response.xpath('a/text()').get()
     publishing_house = publishing_house_without_deal.replace('\n', '').replace('\r', '').replace('\t', '').strip()
 
     publication_date_without_deal = re.search(r'\d.+', publish)
@@ -73,29 +92,30 @@ def get_publish(response, num):
         publication_date = publication_date_without_deal.group()
     else:
         publication_date = ''
-    return publisher_place, publishing_house, publication_date
+    _kv['出版地'] = publisher_place
+    _kv['出版社'] = publishing_house
+    _kv['出版日期'] = publication_date
 
 
-def get_form(response, num):
-    form = "".join(response.xpath('//tr[{}]/td[@class="rightTD"]/text()'.format(num)).get().strip().split())
-    return form
+def get_form(_kv: dict, response):
+    form = "".join(response.xpath('string(.)').get().strip().split())
+    _kv['载体形态'] = form
 
 
-def get_summary(response, num):
-    summary = response.xpath('//tr[{}]/td[@class="rightTD"]/text()'.format(num)).get().strip()
-    return summary
+def get_summary(_kv: dict, response):
+    summary = response.xpath('string(.)').get().strip()
+    _kv['摘要'] = summary
 
 
-def get_theme(response, num):
-    theme_without_deal = response.xpath('//tr[{}]/td[@class="rightTD"]'.format(num))
-    theme = theme_without_deal.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
-    return theme
+def get_theme(_kv: dict, response):
+    theme = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    if '主题' not in _kv:
+        _kv['主题'] = theme
 
 
-def get_classification_and_edition(response, num):
-    classification_edition_without_deal = response.xpath('//tr[{}]/td[@class="rightTD"]'.format(num))
-    classification_edition = classification_edition_without_deal.xpath('string(.)').get().replace('\n', '')\
-        .replace('\r', '').replace('\t', '').strip()
+def get_classification_and_edition(_kv: dict, response):
+    classification_edition = response.xpath('string(.)').get().replace('\n', '').replace('\r', '').replace('\t',
+                                                                                                           '').strip()
     classification_or_none = re.search(r"[a-zA-Z0-9.:-]+", classification_edition)
     if classification_or_none is not None:
         classification = classification_or_none.group()
@@ -106,7 +126,8 @@ def get_classification_and_edition(response, num):
         edition = re.sub('[版次：]', '', edition_with_word.group())
     else:
         edition = ''
-    return classification, edition
+    _kv['分类'] = classification
+    _kv['版次'] = edition
 
 
 class LibraryPageSpider(scrapy.Spider):
@@ -136,7 +157,8 @@ class LibraryPageSpider(scrapy.Spider):
                                  callback=self.parse)
         """
         for sort, _ in self.book_sort:
-            # url = 'http://210.35.66.106/opac/book/573381' 59808 246377
+            # Test single book's url
+            # url = 'http://210.35.66.106/opac/book/618270'
             url = self._get_sort_page_url(sort)
             yield scrapy.Request(url=url, callback=self.parse)
 
@@ -158,61 +180,69 @@ class LibraryPageSpider(scrapy.Spider):
             pass
 
     def parse_book_detail(self, response, **kwargs):
-        all_element = response.xpath('//tr').getall()
-        num = len(all_element)
-        i = 0
+        # Store the key and value in dictionary
+        all_element = response.xpath('//tr')
+        match_element = []
+        kv = dict()
+        for each_element in all_element:
+            left_or_None = each_element.xpath('td[@class="leftTD"]/div[@align="left"]/text()').get()
+            right = each_element.xpath('td[@class="rightTD"]')
+            if left_or_None is not None:
+                left = left_or_None.strip()
+                match_element.append((left, right))
+
+        # The function to analysis the web
+        functions = {
+            'ISBN:': get_isbn_and_price,
+            'ISSN:': get_isbn_and_price,
+            '语种:': get_language,
+            '题名/责任者:': get_author,
+            '著者:': get_author,
+            '出版发行:': get_publish,
+            '载体形态:': get_form,
+            '摘要:': get_summary,
+            '主题:': get_theme,
+            '相关主题:': get_theme,
+            '中图分类:': get_classification_and_edition,
+            '科图分类:': get_classification_and_edition
+        }
+
+        # The dictionary's key to item's label
+        dict_item = {
+            '标题': 'title',
+            'url': 'url',
+            '书号': 'book_id',
+            'ISBN': 'isbn',
+            '价格': 'price',
+            '语种': 'language',
+            '作者': 'author',
+            '出版地': 'publisher_place',
+            '出版日期': 'publication_date',
+            '出版社': 'publishing_house',
+            '载体形态': 'form',
+            '摘要': 'summary',
+            '主题': 'theme',
+            '分类': 'classification',
+            '版次': 'edition'
+        }
+
+        # Analysis the web
+        get_title(kv, response)
+        kv['url'] = response.url
+        book_id = int(response.url.replace('http://210.35.66.106/opac/book/', ''))
+        kv['书号'] = book_id
+
+        for k, v in match_element:
+            key = k
+            value = v
+            if key in functions:
+                function = functions[k]
+                function(kv, value)
+
+        # Write the item by dictionary's value
         item = BookItem()
-        item['title'] = ''
-        item['url'] = ''
-        item['book_id'] = ''
-        item['isbn'] = ''
-        item['language'] = ''
-        item['author'] = ''
-        item['publisher_place'] = ''
-        item['publication_date'] = ''
-        item['price'] = ''
-        item['publishing_house'] = ''
-        item['form'] = ''
-        item['summary'] = ''
-        item['theme'] = ''
-        item['classification'] = ''
-        item['edition'] = ''
-        while i < num:
-            item['title'] = get_title(response)
-            item['url'] = response.url
-            book_id = int(response.url.replace('http://210.35.66.106/opac/book/', ''))
-            item['book_id'] = book_id
-            if response.xpath('//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get() is not None:
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == 'ISBN:':
-                    item['isbn'], item['price'] = get_isbn_and_price(response, i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '语种:':
-                    item['language'] = get_language(response, i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '题名/责任者:':
-                    item['author'] = get_author(response, i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '出版发行:':
-                    item['publisher_place'], item['publishing_house'], item['publication_date'] = get_publish(response,
-                                                                                                              i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '载体形态:':
-                    item['form'] = get_form(response, i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '摘要:':
-                    item['summary'] = get_summary(response, i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '主题:'\
-                        or response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '相关主题:':
-                    item['theme'] = get_theme(response, i)
-                if response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '中图分类:' \
-                        or response.xpath(
-                        '//tr[{}]/td[@class="leftTD"]/div[@align="left"]/text()'.format(i)).get().strip() == '科图分类:':
-                    item['classification'], item['edition'] = get_classification_and_edition(response, i)
-            i += 1
+        init_item(item)
+        add_item(item, kv, dict_item)
         yield item
 
     def parse_book_list(self, response, **kwargs):
