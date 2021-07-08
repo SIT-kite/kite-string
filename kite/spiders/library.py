@@ -1,24 +1,14 @@
 import re
+
 import scrapy
 
 from ..items import BookItem
 
-
-def new_book_item(d_i: dict) -> BookItem:
-    book_item = BookItem()
-    for key, value in d_i.items():
-        book_item[value] = ''
-    return book_item
-
-
-def add_item(item, _kv: dict, d_i: dict):
-    for key, value in d_i.items():
-        if key in _kv:
-            item[value] = _kv[key]
+WHITE_SPACE_PATTERN = re.compile(r'\s')
 
 
 def remove_space(s: str) -> str:
-    return s.replace('\n', '').replace('\r', '').replace('\t', '').strip()
+    return WHITE_SPACE_PATTERN.sub(s, ' ')
 
 
 def get_links(response):
@@ -53,7 +43,6 @@ def get_isbn_and_price(_kv: dict, response):
 
 def get_language(_kv: dict, response):
     language = remove_space(response.xpath('string(.)').get())
-
     _kv['语种'] = language
 
 
@@ -124,34 +113,75 @@ def get_classification_and_edition(_kv: dict, response):
 
 class LibraryPageSpider(scrapy.Spider):
     name = 'library'
-    home_url = 'http://210.35.66.106/opac/browse/cls'
-    cookie = ''
+    site = 'http://210.35.66.106'
 
     book_sort = [
-        ('A', '马列主义、毛泽东思想、邓小平理论'), ('B', '哲学、宗教'), ('C', '社会科学总论'), ('D', '政治、法律'),
-        ('E', '军事'), ('F', '经济'), ('G', '文化、科学、教育、体育'), ('H', '语言、文字'),
-        ('I', '文学'), ('J', '艺术'), ('K', '历史、地理'), ('N', '自然科学总论'),
-        ('O', '数理科学与化学'), ('P', '天文学、地球科学'), ('Q', '生物科学'), ('R', '医药、卫生'),
-        ('S', '农业科学'), ('T', '工业技术'), ('U', '交通运输'),
-        ('X', '环境科学,安全科学'), ('Z', '综合性图书')
+        ('A', '马列主义、毛泽东思想、邓小平理论'),
+        ('B', '哲学、宗教'),
+        ('C', '社会科学总论'),
+        ('D', '政治、法律'),
+        ('E', '军事'),
+        ('F', '经济'),
+        ('G', '文化、科学、教育、体育'),
+        ('H', '语言、文字'),
+        ('I', '文学'),
+        ('J', '艺术'),
+        ('K', '历史、地理'),
+        ('N', '自然科学总论'),
+        ('O', '数理科学与化学'),
+        ('P', '天文学、地球科学'),
+        ('Q', '生物科学'),
+        ('R', '医药、卫生'),
+        ('S', '农业科学'),
+        ('T', '工业技术'),
+        ('U', '交通运输'),
+        ('X', '环境科学,安全科学'),
+        ('Z', '综合性图书')
     ]
 
-    @staticmethod
-    def _get_sort_page_url(sort_code: str):
-        return f'http://210.35.66.106/opac/search?q={sort_code}&searchType=standard&isFacet=false&view=simple&' \
-               f'searchWay=class&rows=10&sortWay=score&sortOrder=desc&searchWay0=marc&logical0=AND&page=1'
+    # The mapping of parser functions indexed by item key.
+    functions = {
+        'ISBN:': get_isbn_and_price,
+        'ISSN:': get_isbn_and_price,
+        '语种:': get_language,
+        '题名/责任者:': get_author,
+        '出版发行:': get_publish,
+        '载体形态:': get_form,
+        '摘要:': get_summary,
+        '主题:': get_theme,
+        '相关主题:': get_theme,
+        '中图分类:': get_classification_and_edition,
+        '科图分类:': get_classification_and_edition
+    }
+
+    # The mapping item in page in Chinese to storage key in English.
+    dict_item = {
+        '标题': 'title',
+        '书号': 'book_id',
+        'ISBN': 'isbn',
+        '价格': 'price',
+        '语种': 'language',
+        '作者': 'author',
+        '出版地': 'publisher_place',
+        '出版日期': 'publication_date',
+        '出版社': 'publishing_house',
+        '载体形态': 'form',
+        '摘要': 'summary',
+        '主题': 'theme',
+        '分类': 'classification',
+        '版次': 'edition'
+    }
+
+    def _make_sort_page_url(self, sort_code: str) -> str:
+        return self.site + f'/opac/search?q={sort_code}&searchType=standard&view=simple&searchWay=class&rows=1000'
 
     def start_requests(self):
         """
-        for index, sort_code in self.book_sort:
-            url = self._get_sort_page_url(sort_code, index)
-            yield scrapy.Request(url=url,
-                                 callback=self.parse)
+        Make start urls for all sorts and append them to request queue.
+        :return: None
         """
         for sort, _ in self.book_sort:
-            # Test single book's url
-            # url = 'http://210.35.66.106/opac/book/618270'
-            url = self._get_sort_page_url(sort)
+            url = self._make_sort_page_url(sort)
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response, **kwargs):
@@ -162,82 +192,57 @@ class LibraryPageSpider(scrapy.Spider):
         # http://210.35.66.106/opac/book/
         # So it's necessary to check it before anything else.
 
-        print(response.url)
         if 'opac/search' in response.url:
             return self.parse_book_list(response, **kwargs)
-        if 'opac/book/' in response.url:
+        elif 'opac/book/' in response.url:
             return self.parse_book_detail(response, **kwargs)
         else:
             # Unexpected page, maybe from detail page
             pass
 
     def parse_book_detail(self, response, **kwargs):
-        # Store the key and value in dictionary
-        all_element = response.xpath('//tr')
-        match_element = []
-        kv = dict()
-        for each_element in all_element:
-            left_or_None = each_element.xpath('td[@class="leftTD"]/div[@align="left"]/text()').get()
-            right = each_element.xpath('td[@class="rightTD"]')
-            if left_or_None is not None:
-                left = left_or_None.strip()
-                match_element.append((left, right))
+        # Parse detail items we want and put them into BookItem
+        detail_nodes = []
+        parsed_items = dict()
 
-        # The function to analysis the web
-        functions = {
-            'ISBN:': get_isbn_and_price,
-            'ISSN:': get_isbn_and_price,
-            '语种:': get_language,
-            '题名/责任者:': get_author,
-            '出版发行:': get_publish,
-            '载体形态:': get_form,
-            '摘要:': get_summary,
-            '主题:': get_theme,
-            '相关主题:': get_theme,
-            '中图分类:': get_classification_and_edition,
-            '科图分类:': get_classification_and_edition
-        }
+        """
+        Because the bad design of book detail page, the developer return 10 identical HTML body and set 9 of them
+        'display: none' to adapt different client. We only need to parse the first one.
+        """
+        # Get info table.
+        table = response.xpath('//table[@id="bookInfoTable"]')[0]
+        # Select items that has leftTD and rightTD at the same time.
+        item_selector = '//tr[td/@class = "leftTD"][td/@class = "rightTD"]'
+        for item_node in table.xpath(item_selector):
+            # Get key and value
+            left = item_node.xpath('string(td[@class="leftTD"])').get().strip()
+            right = item_node.xpath('td[@class="rightTD"]')
+            detail_nodes.append((left, right))
 
-        # The dictionary's key to item's label
-        dict_item = {
-            '标题': 'title',
-            '书号': 'book_id',
-            'ISBN': 'isbn',
-            '价格': 'price',
-            '语种': 'language',
-            '作者': 'author',
-            '出版地': 'publisher_place',
-            '出版日期': 'publication_date',
-            '出版社': 'publishing_house',
-            '载体形态': 'form',
-            '摘要': 'summary',
-            '主题': 'theme',
-            '分类': 'classification',
-            '版次': 'edition'
-        }
-
-        # Analysis the web
-        get_title(kv, response)
+        # Analyse the page
+        get_title(parsed_items, response)
+        # Emm.. not canonical but it works.
         book_id = int(response.url.replace('http://210.35.66.106/opac/book/', ''))
-        kv['书号'] = book_id
+        parsed_items['书号'] = book_id
 
-        for k, v in match_element:
-            key = k
-            value = v
-            if key in functions:
-                function = functions[k]
-                function(kv, value)
+        # Extract k and v from node, and standardize the fields.
+        for k, v in detail_nodes:
+            if k in self.functions:
+                # Get and call the corresponding parser function
+                parse_item_func = self.functions[k]
+                parse_item_func(parsed_items, v)
 
-        # Write the item by dictionary's value
-        item = new_book_item(dict_item)
-        add_item(item, kv, dict_item)
-        yield item
+        # Put detail items into a BookItem object.
+        book_item = BookItem()
+        for parsed_item_key in parsed_items.keys():
+            storage_key = self.dict_item[parsed_item_key]
+            book_item[storage_key] = parsed_items[parsed_item_key]
+
+        yield book_item
 
     def parse_book_list(self, response, **kwargs):
         link_list = get_links(response)
         for url in link_list:
             url = response.urljoin(url)
 
-            yield scrapy.Request(url=url,
-                                 callback=self.parse,
-                                 cb_kwargs=kwargs)
+            yield scrapy.Request(url=url, callback=self.parse)
