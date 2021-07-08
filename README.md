@@ -193,7 +193,7 @@ if '.sit.edu.cn' not in url:
   项目重构、维护，数据库和分词的对接
 - 18级 计算机 [@Wanfengcxz](https://github.com/wanfengcxz)  
   PDF 文件解析
-- 19级 计算机 [@B635](https://github.com/B635)
+- 19级 计算机 [@B635](https://github.com/B635)  
   图书馆爬虫模块、项目维护
 
 ## 开源协议
