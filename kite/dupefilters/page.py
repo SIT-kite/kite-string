@@ -9,12 +9,12 @@ import scrapy
 from pybloom_live import ScalableBloomFilter
 from scrapy.dupefilters import BaseDupeFilter
 
-from . import get_database, divide_url
+from kite import get_database, divide_url
 
 
-class KiteDupeFilter(BaseDupeFilter):
+class PageDupeFilter(BaseDupeFilter):
     """
-    KiteDupeFilter
+    PageDupeFilter
 
     The filter uses a bloom filter inside.
     It load processed page url from postgresql

@@ -114,6 +114,10 @@ def get_classification_and_edition(_kv: dict, response):
 class LibraryPageSpider(scrapy.Spider):
     name = 'library'
     site = 'http://210.35.66.106'
+    allowed_domains = ['210.35.66.106']
+    custom_settings = {
+        'DUPEFILTER_CLASS': 'kite.dupefilters.LibraryDupeFilter'
+    }
 
     book_sort = [
         ('A', '马列主义、毛泽东思想、邓小平理论'),
