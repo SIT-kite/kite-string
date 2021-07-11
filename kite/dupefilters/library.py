@@ -8,12 +8,12 @@ import re
 from typing import Set
 
 import scrapy
-from scrapy.dupefilters import BaseDupeFilter
+from scrapy.dupefilters import RFPDupeFilter
 
 from kite import get_database
 
 
-class LibraryDupeFilter(BaseDupeFilter):
+class LibraryDupeFilter(RFPDupeFilter):
     """
     LibraryDupeFilter
 
@@ -21,16 +21,14 @@ class LibraryDupeFilter(BaseDupeFilter):
     It pull books already store in database and cached here.
     """
 
-    def __init__(self):
+    __PATTERN_BOOK_URL = re.compile(r'/opac/book/(\d+)')
+
+    def __init__(self, path=None, debug=False):
+        super().__init__(path, debug)
+
         self.__pg_client = get_database()
         self.__filter: Set[int] = set()
         self.logger = logging.getLogger(__name__)
-
-        self.__PATTERN_BOOK_URL = re.compile(r'/opac/book/(\d+)')
-
-    @classmethod
-    def from_settings(cls, settings):
-        return cls()
 
     def request_seen(self, request: scrapy.Request) -> bool:
         book_id = self._parse_book_url(request.url)
@@ -41,9 +39,11 @@ class LibraryDupeFilter(BaseDupeFilter):
 
             self.__filter.add(book_id)
 
-        return False
+        return super().request_seen(request)
 
     def open(self):
+        super().open()
+
         batch_size = 100
         book_count = 0
         sql = 'SELECT book_id FROM public.book;'
@@ -65,12 +65,6 @@ class LibraryDupeFilter(BaseDupeFilter):
         self.__pg_client.close()
         self.__pg_client = None
         self.logger.info(f'Load {book_count} books\' id from database.')
-
-    def close(self, reason):
-        pass
-
-    def log(self, request, spider):
-        pass
 
     def _parse_book_url(self, url: str) -> int:
         result = self.__PATTERN_BOOK_URL.search(url)
