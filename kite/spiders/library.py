@@ -237,10 +237,14 @@ class LibraryPageSpider(scrapy.Spider):
                 parse_item_func(parsed_items, v)
 
         # Put detail items into a BookItem object.
+        # Info key is like '标题' in page and as key of parsed_items.
+        # While item key is like 'title' used to store in BookItem and database.
         book_item = BookItem()
-        for parsed_item_key in parsed_items.keys():
-            storage_key = self.dict_item[parsed_item_key]
-            book_item[storage_key] = parsed_items[parsed_item_key]
+        for info_key, item_key in self.dict_item.items():
+            if info_key in parsed_items:
+                book_item[item_key] = parsed_items[info_key]
+            else:
+                book_item[item_key] = None
 
         yield book_item
 
