@@ -46,7 +46,7 @@ class LibraryDupeFilter(RFPDupeFilter):
 
         batch_size = 100
         book_count = 0
-        sql = 'SELECT book_id FROM public.book;'
+        sql = 'SELECT book_id FROM library.book;'
 
         with self.__pg_client.cursor() as cursor:
             cursor.execute(sql)

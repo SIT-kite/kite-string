@@ -15,7 +15,7 @@ class BookPipeline:
             --_author text, --_publisher_place text, _publishing_house text, _publication_date text, _form text, 
             --_summary text, --_theme text, _classification text, _edition text) 
             
-            CALL public.submit_book(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+            CALL library.submit_book(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             '''
 
         cursor.execute(insert_sql,
