@@ -1,5 +1,4 @@
-import re
-
+import regex as re
 import scrapy
 
 from ..items import BookItem
