@@ -119,8 +119,8 @@ AWS_REGION_NAME = os.getenv('AWS_REGION_NAME')
 LOG_LEVEL = 'INFO'
 # LOG_FILE = 'log.txt'
 
-PG_DATABASE = 'db'
-PG_USERNAME = 'user'
-PG_PASSWORD = 'password'
-PG_PORT = 5432
-PG_HOST = 'ip'
+PG_DATABASE = os.getenv('PG_DATABASE', 'db')
+PG_USERNAME = os.getenv('PG_USERNAME', os.getenv('PG_USER', 'user'))
+PG_PASSWORD = os.getenv('PG_PASSWORD', 'password')
+PG_PORT = int(os.getenv('PG_PORT', '5432'))
+PG_HOST = os.getenv('PG_HOST', 'ip')
