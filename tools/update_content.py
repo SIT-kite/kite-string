@@ -1,0 +1,143 @@
+# -*- coding: utf-8 -*-
+# @Time    : 2021/2/16 7:16
+# @Author  : sunnysab
+# @File    : update_content.py
+#
+# Use urls exported from postgresql and re-request, re-parse content.
+#
+
+import asyncio
+import os
+import re
+import time
+from typing import List, Dict, Tuple
+from urllib.parse import urlparse
+
+import aiohttp
+import chardet
+import psycopg
+from dotenv import load_dotenv
+from lxml import etree
+from readability import Document
+
+load_dotenv()
+
+sessions: Dict[str, aiohttp.ClientSession] = dict()
+
+
+def load_db_parameters() -> Dict[str, str | int]:
+    return {
+        'dbname': os.getenv('PG_DATABASE', 'db'),
+        'user': os.getenv('PG_USERNAME', os.getenv('PG_USER', 'postgres')),
+        'password': os.getenv('PG_PASSWORD', ''),
+        'host': os.getenv('PG_HOST', '127.0.0.1'),
+        'port': int(os.getenv('PG_PORT', '5432')),
+    }
+
+
+def get_session(domain: str) -> aiohttp.ClientSession:
+    if domain not in sessions:
+        sessions[domain] = aiohttp.ClientSession()
+    return sessions[domain]
+
+
+def divide_url(url: str) -> Tuple[str, str]:
+    result = urlparse(url)
+    host, path = result.netloc, result.path
+
+    if len(path) == 0:
+        path = '/'
+    return host, path
+
+
+def load_urls(file: str = 'urls.txt') -> List[str]:
+    r = open(file, 'r', encoding='utf-8').readlines()
+    return [line.rstrip() for line in r if line]
+
+
+async def request(url: str) -> bytes or None:
+    host, _ = divide_url(url)
+    session = get_session(host)
+
+    async with session.get(url, allow_redirects=True) as response:
+        if response.status != 200:
+            return None
+        html = await response.read()
+
+    return html
+
+
+SPACES_PATTERN = re.compile(r'\n\n*')
+
+
+def process_content(body: bytes) -> Tuple[str, str]:
+    def clean_p(s: str) -> str:
+        return s.replace('\xa0', ' ').strip()
+
+    def clean_all(s: str) -> str:
+        s = SPACES_PATTERN.sub('\n\n', s)
+        s = s.strip()
+        return s
+
+    try:
+        encoding = 'utf-8'
+        html = body.decode(encoding)
+    except Exception as _:
+        encoding = chardet.detect(body).get('encoding') or 'utf-8'
+        html = body.decode(encoding, errors='replace')
+
+    doc = Document(html)
+    page = etree.HTML(doc.summary())
+    paragraphs = [clean_p(p.xpath('string(.)')) for p in page.xpath('//p')]
+
+    return doc.title(), clean_all('\n'.join(paragraphs))
+
+
+async def create_db_connection() -> psycopg.AsyncConnection:
+    parameters = load_db_parameters()
+    conn = await psycopg.AsyncConnection.connect(**parameters)
+    await conn.set_autocommit(True)
+    return conn
+
+
+async def update_content(conn: psycopg.AsyncConnection,
+                         url: str, title: str, content: str):
+    sql = \
+        f'''
+        -- update_page(_host text, _path text, _title text, _content text)
+
+        CALL public.update_page(%s, %s, %s, %s);
+        '''
+    host, path = divide_url(url)
+    await conn.execute(sql, (host, path, title, content))
+
+
+async def main():
+    conn = await create_db_connection()
+    urls = load_urls()
+    i = 0
+
+    s_time = time.time()
+    print(f'start at {s_time}')
+    for u in urls:
+        try:
+            body = await request(u)
+            title, content = process_content(body)
+            await update_content(conn, u, title, content)
+        except Exception as e:
+            print(f'Error while processing {u}\n  type: {type(e)}\n  detail: {e}')
+
+        i += 1
+        if i % 100 == 0:
+            print(i)
+    await conn.close()
+
+    print(f'end at {time.time()}, {time.time() - s_time} s elapsed.')
+
+
+def run():
+    asyncio.run(main())
+
+
+if __name__ == '__main__':
+    run()
