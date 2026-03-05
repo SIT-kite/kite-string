@@ -1,4 +1,11 @@
 from readability import Document
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.internet.error import (
+    ConnectionRefusedError,
+    DNSLookupError,
+    TCPTimedOutError,
+    TimeoutError,
+)
 
 from . import *
 from .. import divide_url
@@ -9,6 +16,15 @@ class PublicPageSpider(scrapy.Spider):
     name = 'public'
     allowed_domains = []
     start_urls = ['https://www.sit.edu.cn/']
+
+    async def start(self):
+        for url in self.start_urls:
+            yield scrapy.Request(
+                url=url,
+                callback=self.parse,
+                errback=self.handle_request_error,
+                meta={'dont_retry': True},
+            )
 
     def parse(self, response: scrapy.http.Response, **kwargs):
         """
@@ -57,7 +73,12 @@ class PublicPageSpider(scrapy.Spider):
             link_type = guess_link_type(path)
             if link_type == 'page':
                 # Fetch next page
-                yield scrapy.Request(url=url, callback=self.parse)
+                yield scrapy.Request(
+                    url=url,
+                    callback=self.parse,
+                    errback=self.handle_request_error,
+                    meta={'dont_retry': True},
+                )
 
             elif link_type in {'attachment', 'image'}:
                 if url in seen_asset_urls:
@@ -97,3 +118,17 @@ class PublicPageSpider(scrapy.Spider):
                 fallback_name = path.split('?', 1)[0].split('#', 1)[0].rsplit('/', 1)[-1]
                 item['title'] = fallback_name[:128]
             yield item
+
+    def handle_request_error(self, failure):
+        request_url = failure.request.url if failure.request else ''
+        if failure.check(HttpError):
+            response = failure.value.response
+            self.logger.debug('Ignored non-200 response: %s %s', response.status, response.url)
+            return None
+
+        if failure.check(ConnectionRefusedError, DNSLookupError, TimeoutError, TCPTimedOutError):
+            self.logger.debug('Ignored network failure: %s (%s)', request_url, failure.getErrorMessage())
+            return None
+
+        self.logger.warning('Request failed: %s (%s)', request_url, failure.getErrorMessage())
+        return None
