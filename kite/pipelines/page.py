@@ -57,7 +57,7 @@ class PagePipeline:
         cursor.execute(insert_sql,
                        (item['title'], host, path, item['publish_date'], item['link_count'], item['content']))
 
-    def process_item(self, item: PageItem, spider: scrapy.Spider):
+    def process_item(self, item: PageItem):
         if item and isinstance(item, PageItem):
             ''' Extract main content from html. '''
 

@@ -8,13 +8,7 @@ from ..items import AttachmentItem, PageItem
 class PublicPageSpider(scrapy.Spider):
     name = 'public'
     allowed_domains = []
-    start_urls = 'https://www.sit.edu.cn/'
-
-    def start_requests(self):
-        """"
-        Handler to the initial process.
-        """
-        yield scrapy.Request(url=self.start_urls, callback=self.parse)
+    start_urls = ['https://www.sit.edu.cn/']
 
     def parse(self, response: scrapy.http.Response, **kwargs):
         """

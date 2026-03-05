@@ -90,7 +90,7 @@ class AttachmentPipeline:
         cursor.execute(insert_sql,
                        (item['title'], host, path, ext, size, local_name, checksum, referer))
 
-    def process_item(self, item: AttachmentItem, spider: scrapy.Spider):
+    def process_item(self, item: AttachmentItem):
         if item and isinstance(item, AttachmentItem):
             self.pg_pool.runInteraction(self.submit_item, item)
 
