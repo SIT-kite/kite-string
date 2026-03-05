@@ -24,6 +24,7 @@ class PublicPageSpider(scrapy.Spider):
                 callback=self.parse,
                 errback=self.handle_request_error,
                 meta={'dont_retry': True},
+                dont_filter=True,
             )
 
     def parse(self, response: scrapy.http.Response, **kwargs):
