@@ -24,8 +24,12 @@ class PublicPageSpider(scrapy.Spider):
         :return: None
         """
 
-        content_type: bytes = response.headers.get('Content-Type')
-        if not content_type.startswith(b'text/html'):
+        content_type: bytes | None = response.headers.get('Content-Type')
+        if not content_type:
+            return None
+
+        mime_type = content_type.split(b';', 1)[0].strip().lower()
+        if mime_type != b'text/html':
             return None
 
         # Note: response.headers is a caseless dict.
