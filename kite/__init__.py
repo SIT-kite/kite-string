@@ -40,14 +40,17 @@ def open_database():
     return pg_pool
 
 
-# Global pg connection pool for pipelines.
-__pg_pool: ThreadedConnectionPool = open_database()
+# Global pg connection pool for pipelines, lazy initialized.
+__pg_pool: ThreadedConnectionPool | None = None
 
 
 def get_database():
-    if __pg_pool:
-        conn = __pg_pool.getconn()
-        conn.autocommit = True
-        conn.set_client_encoding('utf8')
+    global __pg_pool
+    if __pg_pool is None:
+        __pg_pool = open_database()
 
-        return conn
+    conn = __pg_pool.getconn()
+    conn.autocommit = True
+    conn.set_client_encoding('utf8')
+
+    return conn
