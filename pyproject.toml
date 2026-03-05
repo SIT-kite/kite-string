@@ -1,0 +1,37 @@
+[project]
+name = "kite-string"
+version = "0.1.0"
+description = "Scrapy-based campus site crawler"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "aiohttp",
+    "asyncpg",
+    "cchardet",
+    "lxml",
+    "psycopg2",
+    "pybloom-live",
+    "pycryptodome",
+    "readability-lxml",
+    "regex",
+    "requests",
+    "scrapy",
+]
+
+[project.optional-dependencies]
+tools = [
+    "pdfminer3k",
+    "wand",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
