@@ -41,7 +41,7 @@ class PageDupeFilter(BaseDupeFilter):
 
     def open(self):
         size = 100
-        sql = 'SELECT DISTINCT host || path FROM public.pages WHERE publish_date IS NOT NULL'
+        sql = 'SELECT DISTINCT host || path FROM public.pages'
         with self.__pg_client.cursor() as cursor:
             cursor.execute(sql)
             b_continue = True
