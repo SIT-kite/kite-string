@@ -20,13 +20,24 @@ class PageDupeFilter(BaseDupeFilter):
     It load processed page url from postgresql
     """
 
-    def __init__(self):
-        self.__pg_client = get_database()
+    def __init__(self, load_existing_urls: bool = True):
+        self.__load_existing_urls = load_existing_urls
+        self.__pg_client = get_database() if load_existing_urls else None
         self.__filter = ScalableBloomFilter(initial_capacity=2 * 10e5)
 
     @classmethod
     def from_settings(cls, settings):
-        return cls()
+        # Keep compatibility with old Scrapy code path.
+        return cls._from_settings(settings)
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls._from_settings(crawler.settings)
+
+    @classmethod
+    def _from_settings(cls, settings):
+        load_existing_urls = settings.getbool('KITE_DUPEFILTER_LOAD_EXISTING_URLS', True)
+        return cls(load_existing_urls=load_existing_urls)
 
     def request_seen(self, request: scrapy.Request) -> bool:
         host, path = divide_url(request.url)
@@ -40,6 +51,9 @@ class PageDupeFilter(BaseDupeFilter):
         return False
 
     def open(self):
+        if not self.__load_existing_urls or self.__pg_client is None:
+            return
+
         size = 100
         sql = 'SELECT DISTINCT host || path FROM public.pages'
         with self.__pg_client.cursor() as cursor:

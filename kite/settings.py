@@ -16,6 +16,13 @@ def normalize_files_store(uri: str) -> str:
             return uri + '/'
     return uri
 
+
+def env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
 # Scrapy settings for kite project
 #
 # For simplicity, this file contains only settings considered important or
@@ -88,6 +95,7 @@ ITEM_PIPELINES = {
 
 # DUPEFILTER_CLASS = 'scrapy.dupefilter.RFPDupeFilter'
 DUPEFILTER_CLASS = 'kite.dupefilters.PageDupeFilter'
+KITE_DUPEFILTER_LOAD_EXISTING_URLS = env_bool('KITE_DUPEFILTER_LOAD_EXISTING_URLS', True)
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html

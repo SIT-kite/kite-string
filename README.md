@@ -121,6 +121,26 @@ uv sync --extra tools
 uv run scrapy crawl public
 ```
 
+如果上次中断后重跑发现“没有新页面进入队列”，通常是因为默认去重器会加载数据库中已抓取 URL。  
+可先执行一次“重新发现页面”的模式：
+
+```shell
+uv run scrapy crawl public -s KITE_DUPEFILTER_LOAD_EXISTING_URLS=0
+```
+
+说明：
+
+- `KITE_DUPEFILTER_LOAD_EXISTING_URLS=0`：本次运行不加载数据库历史 URL，只保留本轮内去重。
+- 页面/附件入库仍走 `ON CONFLICT ... DO UPDATE`，不会因为重复 URL 直接插入脏数据。
+
+如果你希望中断后继续上一次任务（而不是从入口页重新发现），建议固定 `JOBDIR`：
+
+```shell
+uv run scrapy crawl public -s JOBDIR=.scrapy/jobs/public
+```
+
+之后即使手动停止，也可以用同一命令继续。
+
 ### 修改
 
 如果你想针对其他网站抓取，你可能要修改 `public.py` - `PublicPageSpider` 中的 `starts_urls`，以及其 `parse` 函数中这样一段代码：
