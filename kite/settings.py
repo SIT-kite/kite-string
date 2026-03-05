@@ -4,6 +4,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def normalize_files_store(uri: str) -> str:
+    """
+    Scrapy's S3FilesStore expects uri as s3://bucket/prefix.
+    Normalize bare bucket uri (s3://bucket) to s3://bucket/ for compatibility.
+    """
+    if uri.startswith('s3://'):
+        rest = uri[5:]
+        if '/' not in rest:
+            return uri + '/'
+    return uri
+
 # Scrapy settings for kite project
 #
 # For simplicity, this file contains only settings considered important or
@@ -34,7 +46,6 @@ CONCURRENT_REQUESTS = 128
 DOWNLOAD_DELAY = 0
 # The download delay setting will honor only one of:
 CONCURRENT_REQUESTS_PER_DOMAIN = 64
-CONCURRENT_REQUESTS_PER_IP = 64
 
 # Disable cookies (enabled by default)
 COOKIES_ENABLED = True
@@ -105,7 +116,7 @@ DOWNLOAD_WARNSIZE = 0
 # FilesPipeline settings
 # Local example: FILES_STORE=download
 # S3 example: FILES_STORE=s3://your-bucket/kite
-FILES_STORE = os.getenv('FILES_STORE', 'download')
+FILES_STORE = normalize_files_store(os.getenv('FILES_STORE', 'download'))
 FILES_STORE_S3_ACL = os.getenv('FILES_STORE_S3_ACL', 'private')
 
 # S3 credentials can be injected by environment variables.

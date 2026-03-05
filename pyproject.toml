@@ -6,7 +6,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "aiohttp",
-    "chardet",
+    "botocore",
+    "chardet<6",
     "lxml",
     "psycopg==3.3.3",
     "python-dotenv",
