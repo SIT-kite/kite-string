@@ -53,7 +53,7 @@ class KiteSpiderMiddleware:
             yield r
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.title)
+        spider.logger.info('Spider opened: %s' % spider.name)
 
 
 class KiteDownloaderMiddleware:
@@ -100,4 +100,4 @@ class KiteDownloaderMiddleware:
         pass
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.title)
+        spider.logger.info('Spider opened: %s' % spider.name)
