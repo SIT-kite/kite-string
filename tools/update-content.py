@@ -7,6 +7,7 @@
 #
 
 import asyncio
+import os
 import re
 import time
 from typing import List, Dict, Tuple
@@ -19,6 +20,16 @@ from lxml import etree
 from readability import Document
 
 sessions: Dict[str, aiohttp.ClientSession] = dict()
+
+
+def load_db_parameters() -> Dict[str, str | int]:
+    return {
+        'dbname': os.getenv('PG_DATABASE', 'db'),
+        'user': os.getenv('PG_USERNAME', os.getenv('PG_USER', 'postgres')),
+        'password': os.getenv('PG_PASSWORD', ''),
+        'host': os.getenv('PG_HOST', '127.0.0.1'),
+        'port': int(os.getenv('PG_PORT', '5432')),
+    }
 
 
 def get_session(domain: str) -> aiohttp.ClientSession:
@@ -80,12 +91,7 @@ def process_content(body: bytes) -> Tuple[str, str]:
 
 
 async def create_db_connection() -> psycopg.AsyncConnection:
-    parameters = {
-        'dbname': 'db',
-        'user': 'postgres',
-        'password': '我不告诉你',
-        'host': '192.168.50.101'
-    }
+    parameters = load_db_parameters()
     conn = await psycopg.AsyncConnection.connect(**parameters)
     await conn.set_autocommit(True)
     return conn
