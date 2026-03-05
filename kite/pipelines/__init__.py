@@ -32,5 +32,3 @@ def create_connection_pool() -> adbapi.ConnectionPool:
 from .page import PagePipeline
 from .caching import FileCachingPipeline
 from .attachment import AttachmentPipeline
-from .notice import NoticePipeline
-from .book import BookPipeline

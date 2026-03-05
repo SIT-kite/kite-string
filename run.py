@@ -5,4 +5,4 @@
 
 from scrapy import cmdline
 
-cmdline.execute("scrapy crawl library".split())
+cmdline.execute("scrapy crawl public".split())

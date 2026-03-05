@@ -65,9 +65,7 @@ DEFAULT_REQUEST_HEADERS = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'kite.pipelines.BookPipeline': 300,
     'kite.pipelines.PagePipeline': 300,
-    'kite.pipelines.NoticePipeline': 300,
     'kite.pipelines.FileCachingPipeline': 301,
     'kite.pipelines.AttachmentPipeline': 302,
 }
@@ -109,6 +107,3 @@ PG_USERNAME = 'user'
 PG_PASSWORD = 'password'
 PG_PORT = 5432
 PG_HOST = 'ip'
-
-OA_USER = '学号'
-OA_PASSWD = '密码'

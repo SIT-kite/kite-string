@@ -3,5 +3,4 @@
 # @Author  : sunnysab
 # @File    : __init__.py.py
 
-from .library import LibraryDupeFilter
 from .page import PageDupeFilter
