@@ -55,7 +55,12 @@ class PageDupeFilter(BaseDupeFilter):
             return
 
         size = 100
-        sql = 'SELECT DISTINCT host || path FROM public.pages'
+        sql = '''
+        SELECT DISTINCT host || path
+        FROM public.pages
+        WHERE path LIKE '/info%'
+          AND length(btrim(COALESCE(content, ''))) > 0
+        '''
         with self.__pg_client.cursor() as cursor:
             cursor.execute(sql)
             b_continue = True
