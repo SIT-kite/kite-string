@@ -25,21 +25,27 @@ def get_file_extension(path: str) -> str:
     if not path:
         return ''
 
-    dot_pos = path.rfind('.')
-    slash_pos = path.rfind('/')
+    normalized_path = path
+    if '#' in normalized_path:
+        normalized_path = normalized_path.split('#', 1)[0]
+    if '?' in normalized_path:
+        normalized_path = normalized_path.split('?', 1)[0]
+
+    dot_pos = normalized_path.rfind('.')
+    slash_pos = normalized_path.rfind('/')
 
     result = ''
     if slash_pos == -1:  # It's a file name
         if dot_pos != -1:
-            result = path[dot_pos + 1:]
+            result = normalized_path[dot_pos + 1:]
         else:
             pass
     else:  # It's an path string
         if dot_pos > slash_pos:  # www.sit.edu.cn/index.html
-            result = path[dot_pos + 1:]
+            result = normalized_path[dot_pos + 1:]
         else:  # www.sit.edu.cn/
             pass
-    return result
+    return result.lower()
 
 
 def get_file_size(path: str) -> int:
@@ -48,6 +54,9 @@ def get_file_size(path: str) -> int:
     :param path: file path on disk
     :return: -1 if file not exists, otherwise the file size
     """
+    if '://' in download_directory:
+        return -1
+
     try:
         r = os.stat(download_directory + '/' + path)
         return r.st_size
@@ -72,7 +81,9 @@ class AttachmentPipeline:
         host, path = divide_url(item['url'])
         ext = get_file_extension(path)
         local_name = item['path']
-        size = get_file_size(local_name)
+        size = item.get('size')
+        if size is None:
+            size = get_file_size(local_name)
         checksum = item['checksum']
         referer = item['referer']
 

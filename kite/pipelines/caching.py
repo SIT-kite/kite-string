@@ -23,10 +23,18 @@ class FileCachingPipeline(FilesPipeline):
         else:
             yield scrapy.Request(item['url'], meta={'title': item['title']})
 
+    def media_downloaded(self, response, request, info, *, item=None):
+        result = super().media_downloaded(response, request, info, item=item)
+        if item is not None:
+            item['size'] = len(response.body)
+        return result
+
     def item_completed(self, results, item: StoreItem, info):
         # Use for statement to replace 'if let'
         for b_result, result_info in results:
             if b_result:
                 item['checksum'] = result_info['checksum']
                 item['path'] = result_info['path']
+                if 'size' not in item:
+                    item['size'] = -1
                 return item

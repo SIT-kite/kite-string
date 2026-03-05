@@ -39,6 +39,16 @@ def get_links(response: scrapy.http.Response) -> List[Tuple[str or None, str]]:
     return filter_links(link_list)
 
 
+def get_images(response: scrapy.http.Response) -> List[Tuple[str or None, str]]:
+    """
+    Get image links in the page.
+    :param response: A scrapy.http.Response that contains the page.
+    :return: A list of tuple (alt, src).
+    """
+    image_list = [(img_node.attrib.get('alt'), img_node.attrib['src']) for img_node in response.css('img[src]')]
+    return filter_links(image_list)
+
+
 def guess_link_type(path: str) -> str:
     """
     Guess link type by path
@@ -57,12 +67,26 @@ def guess_link_type(path: str) -> str:
         'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx', 'pdf'
     }
 
+    image_postfix_set = {
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico', 'tif', 'tiff'
+    }
+
+    normalized_path = (path or '').lower()
+    if '#' in normalized_path:
+        normalized_path = normalized_path.split('#', 1)[0]
+    if '?' in normalized_path:
+        normalized_path = normalized_path.split('?', 1)[0]
+
     for each_postfix in page_postfix_set:
-        if path.endswith(each_postfix):
+        if normalized_path.endswith(each_postfix):
             return 'page'
 
     for each_postfix in attachment_postfix_set:
-        if path.endswith(each_postfix):
+        if normalized_path.endswith(each_postfix):
             return 'attachment'
+
+    for each_postfix in image_postfix_set:
+        if normalized_path.endswith(each_postfix):
+            return 'image'
 
     return 'unknown'

@@ -44,6 +44,24 @@ PG_HOST = 'ip'
 FILES_STORE = 'download'
 ```
 
+如果你希望将附件和图片直接存入 S3，请使用环境变量覆盖：
+
+```shell
+export FILES_STORE='s3://your-bucket/kite'
+export FILES_STORE_S3_ACL='private'
+export AWS_ACCESS_KEY_ID='xxx'
+export AWS_SECRET_ACCESS_KEY='xxx'
+# 可选：自建对象存储（如 MinIO/Ceph）
+export AWS_ENDPOINT_URL='https://s3.example.com'
+export AWS_REGION_NAME='ap-east-1'
+```
+
+说明：
+
+- 页面正文元信息写入 `pages` 表。
+- 附件和图片的元信息统一写入 `attachments` 表。
+- 文件实体存储在 `FILES_STORE` 指向的位置（本地目录或 S3）。
+
 如有需要，可以在 `kite/spiders/__init__.py` 中修改已知的扩展名列表：
 
 ```python
@@ -96,7 +114,7 @@ uv run scrapy crawl public
 如果你想针对其他网站抓取，你可能要修改 `public.py` - `PublicPageSpider` 中的 `starts_urls`，以及其 `parse` 函数中这样一段代码：
 
 ```python
-if '.sit.edu.cn' not in url:
+if host != 'sit.edu.cn' and not host.endswith('.sit.edu.cn'):
     continue
 ```
 

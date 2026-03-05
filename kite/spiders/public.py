@@ -39,6 +39,8 @@ class PublicPageSpider(scrapy.Spider):
         # Submit the this_page to pipeline.
         yield this_page
 
+        seen_asset_urls = set()
+
         # Get other links from the page and append them to url list
         link_list = get_links(response)
         for title, url in link_list:
@@ -59,10 +61,41 @@ class PublicPageSpider(scrapy.Spider):
                 # Fetch next page
                 yield scrapy.Request(url=url, callback=self.parse)
 
-            elif link_type == 'attachment':  # link_type may equal to 'attachment'
+            elif link_type in {'attachment', 'image'}:
+                if url in seen_asset_urls:
+                    continue
+                seen_asset_urls.add(url)
+
                 item = AttachmentItem()
 
                 item['referer'] = response.url  # Url of current web page
-                item['url'] = url  # Url of attachment
+                item['url'] = url  # Url of asset (attachment or image)
                 item['title'] = title.replace('\xa0', '').replace(' ', '')  # Take file title from last page.
+                if len(item['title']) == 0:
+                    fallback_name = path.split('?', 1)[0].split('#', 1)[0].rsplit('/', 1)[-1]
+                    item['title'] = fallback_name[:128]
                 yield item
+
+        # Crawl embedded images even if there is no anchor to them.
+        image_list = get_images(response)
+        for alt, url in image_list:
+            url = response.urljoin(url)
+            host, _ = divide_url(url)
+            if host != 'sit.edu.cn' and not host.endswith('.sit.edu.cn'):
+                continue
+
+            _, path = divide_url(url)
+            if guess_link_type(path) != 'image':
+                continue
+            if url in seen_asset_urls:
+                continue
+            seen_asset_urls.add(url)
+
+            item = AttachmentItem()
+            item['referer'] = response.url
+            item['url'] = url
+            item['title'] = (alt or '').replace('\xa0', '').replace(' ', '')
+            if len(item['title']) == 0:
+                fallback_name = path.split('?', 1)[0].split('#', 1)[0].rsplit('/', 1)[-1]
+                item['title'] = fallback_name[:128]
+            yield item

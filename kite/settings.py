@@ -1,3 +1,5 @@
+import os
+
 # Scrapy settings for kite project
 #
 # For simplicity, this file contains only settings considered important or
@@ -97,7 +99,18 @@ DOWNLOAD_WARNSIZE = 0
 # HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 # FilesPipeline settings
-FILES_STORE = 'download'
+# Local example: FILES_STORE=download
+# S3 example: FILES_STORE=s3://your-bucket/kite
+FILES_STORE = os.getenv('FILES_STORE', 'download')
+FILES_STORE_S3_ACL = os.getenv('FILES_STORE_S3_ACL', 'private')
+
+# S3 credentials can be injected by environment variables.
+# See Scrapy docs for AWS_* setting details.
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN')
+AWS_ENDPOINT_URL = os.getenv('AWS_ENDPOINT_URL')
+AWS_REGION_NAME = os.getenv('AWS_REGION_NAME')
 
 LOG_LEVEL = 'INFO'
 # LOG_FILE = 'log.txt'
