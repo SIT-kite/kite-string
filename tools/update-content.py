@@ -13,8 +13,8 @@ from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 
 import aiohttp
-import asyncpg
 import chardet
+import psycopg
 from lxml import etree
 from readability import Document
 
@@ -79,30 +79,32 @@ def process_content(body: bytes) -> Tuple[str, str]:
     return doc.title(), clean_all('\n'.join(paragraphs))
 
 
-async def create_db_pool() -> asyncpg.Pool:
+async def create_db_connection() -> psycopg.AsyncConnection:
     parameters = {
-        'database': 'db',
+        'dbname': 'db',
         'user': 'postgres',
         'password': '我不告诉你',
         'host': '192.168.50.101'
     }
-    return await asyncpg.create_pool(**parameters)
+    conn = await psycopg.AsyncConnection.connect(**parameters)
+    await conn.set_autocommit(True)
+    return conn
 
 
-async def update_content(pool: asyncpg.Pool,
+async def update_content(conn: psycopg.AsyncConnection,
                          url: str, title: str, content: str):
     sql = \
         f'''
         -- update_page(_host text, _path text, _title text, _content text)
 
-        CALL public.update_page($1, $2, $3, $4);
+        CALL public.update_page(%s, %s, %s, %s);
         '''
     host, path = divide_url(url)
-    await pool.execute(sql, host, path, title, content)
+    await conn.execute(sql, (host, path, title, content))
 
 
 async def main():
-    pool = await create_db_pool()
+    conn = await create_db_connection()
     urls = load_urls()
     i = 0
 
@@ -112,13 +114,15 @@ async def main():
         try:
             body = await request(u)
             title, content = process_content(body)
-            await update_content(pool, u, title, content)
+            await update_content(conn, u, title, content)
         except Exception as e:
             print(f'Error while processing {u}\n  type: {type(e)}\n  detail: {e}')
 
         i += 1
         if i % 100 == 0:
             print(i)
+    await conn.close()
+
     print(f'end at {time.time()}, {time.time() - s_time} s elapsed.')
 
 

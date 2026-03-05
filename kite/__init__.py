@@ -1,7 +1,7 @@
 from typing import Tuple
 from urllib.parse import urlparse
 
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg import Connection, connect
 from scrapy.utils.project import get_project_settings
 
 
@@ -23,7 +23,7 @@ def divide_url(url: str) -> Tuple[str, str]:
     return host, path
 
 
-def open_database():
+def open_database() -> Connection:
     """
     Open database configured in scrapy settings.
     :return: If everything successful, returns a db client handler. While error occurred, it raise exceptions.
@@ -35,22 +35,11 @@ def open_database():
     host = settings['PG_HOST']
     port = settings['PG_PORT']
 
-    pg_pool = ThreadedConnectionPool(2, 10, database=database, user=username, password=password,
-                                     host=host, port=port)
-    return pg_pool
-
-
-# Global pg connection pool for pipelines, lazy initialized.
-__pg_pool: ThreadedConnectionPool | None = None
+    conn = connect(dbname=database, user=username, password=password, host=host, port=port, autocommit=True)
+    with conn.cursor() as cursor:
+        cursor.execute("SET client_encoding TO 'UTF8'")
+    return conn
 
 
 def get_database():
-    global __pg_pool
-    if __pg_pool is None:
-        __pg_pool = open_database()
-
-    conn = __pg_pool.getconn()
-    conn.autocommit = True
-    conn.set_client_encoding('utf8')
-
-    return conn
+    return open_database()

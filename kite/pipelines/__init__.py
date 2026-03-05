@@ -12,19 +12,20 @@ download_directory = get_project_settings()['FILES_STORE']
 
 def initial_connection(conn):
     conn.autocommit = True
-    conn.set_client_encoding('utf8')
+    with conn.cursor() as cursor:
+        cursor.execute("SET client_encoding TO 'UTF8'")
 
 
 def create_connection_pool() -> adbapi.ConnectionPool:
     settings = get_project_settings()
     params = {
-        'database': settings['PG_DATABASE'],
+        'dbname': settings['PG_DATABASE'],
         'host': settings['PG_HOST'],
         'port': settings['PG_PORT'],
         'user': settings['PG_USERNAME'],
         'password': settings['PG_PASSWORD'],
     }
-    pool = adbapi.ConnectionPool('psycopg2', cp_openfun=initial_connection, **params)
+    pool = adbapi.ConnectionPool('psycopg', cp_openfun=initial_connection, **params)
     return pool
 
 

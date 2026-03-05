@@ -132,14 +132,13 @@ if host != 'sit.edu.cn' and not host.endswith('.sit.edu.cn'):
    可以使用 `pkg` 安装这两个包，再 `pip install lxml` 即可。
 
 
-2. `psycopg2` 安装报错: ` pg_config executable not found.`
+2. `psycopg` 安装报错: `pg_config executable not found.`
 
-   使用 `pkg` 安装 `postgresql13-client` 或 `py37-psycopg2`。 由于线上数据库使用了 `postgresql13`，而 `pkg` 包中依赖的还是版本为 `12`
-   的客户端，所以还是不要用 `pkg` 安装 `psycopg2` 比较好。
+   使用 `pkg` 安装 `postgresql13-client`。项目统一使用 `psycopg==3.3.3`，建议在虚拟环境中安装。
 
     ```shell
     sudo pkg install postgresql13-client
-    pip install psycopg2
+    pip install "psycopg==3.3.3"
     ```
    （小技巧：使用 `pkg search` 可以搜索相关的包。如，等到 FreeBSD 普遍使用 python38, python39 时，这些包名也会相应改变。）
 
