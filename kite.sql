@@ -3,7 +3,7 @@
 
     你需要先执行下面创建数据的语句，并确保 PostgreSQL 已安装 pg_jieba 扩展。
 
-    如果想快速体验且暂不安装 pg_jieba，请删除索引 idx_gin_page_content 创建行。
+    如果想快速体验且暂不安装 pg_jieba，请删除索引 idx_pages_search_vector 创建行。
     如果有其他问题，可以在仓库中提一个 issue：
     https://github.com/sunnysab/kite-string/issues
 
@@ -47,16 +47,55 @@ CREATE TABLE IF NOT EXISTS pages
     publish_date date,
     update_date  date,
     link_count   smallint,
-    content      text not null
+    content      text not null,
+    search_vector tsvector
 );
 COMMENT ON TABLE pages IS '爬取到的文章';
+
+ALTER TABLE pages
+ADD COLUMN IF NOT EXISTS search_vector tsvector;
 
 CREATE UNIQUE INDEX idx_pages_host_path_index
     ON pages (host, path);
 
+CREATE OR REPLACE FUNCTION public.build_page_search_vector(
+    _title text,
+    _content text
+) RETURNS tsvector AS
+$$
+SELECT
+    setweight(to_tsvector('jiebaqry', COALESCE(_title, '')), 'A') ||
+    setweight(
+        to_tsvector('jiebaqry', COALESCE(SUBSTRING(_content FROM 1 FOR 50000), '')),
+        'B'
+    );
+$$ LANGUAGE sql STABLE;
+
+CREATE OR REPLACE FUNCTION public.pages_search_vector_trigger()
+RETURNS trigger AS
+$$
+BEGIN
+    NEW.search_vector = public.build_page_search_vector(NEW.title, NEW.content);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_pages_search_vector ON pages;
+
+CREATE TRIGGER trg_pages_search_vector
+BEFORE INSERT OR UPDATE OF title, content
+ON pages
+FOR EACH ROW EXECUTE FUNCTION public.pages_search_vector_trigger();
+
+UPDATE pages
+SET search_vector = public.build_page_search_vector(title, content)
+WHERE search_vector IS NULL;
+
+DROP INDEX IF EXISTS idx_gin_page_content;
+
 -- 倒排索引
-CREATE INDEX IF NOT EXISTS idx_gin_page_content
-    ON pages USING gin (to_tsvector('jiebaqry', content));
+CREATE INDEX IF NOT EXISTS idx_pages_search_vector
+    ON pages USING gin (search_vector);
 
 CREATE INDEX IF NOT EXISTS pages_publish_date_index
     ON pages (publish_date DESC);
