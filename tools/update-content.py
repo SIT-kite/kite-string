@@ -16,8 +16,11 @@ from urllib.parse import urlparse
 import aiohttp
 import chardet
 import psycopg
+from dotenv import load_dotenv
 from lxml import etree
 from readability import Document
+
+load_dotenv()
 
 sessions: Dict[str, aiohttp.ClientSession] = dict()
 

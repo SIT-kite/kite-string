@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Scrapy settings for kite project
 #
 # For simplicity, this file contains only settings considered important or

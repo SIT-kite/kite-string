@@ -44,6 +44,17 @@ PG_HOST = 'ip'
 FILES_STORE = 'download'
 ```
 
+项目支持自动加载 `.env`（通过 `python-dotenv`），你也可以把这些变量写到仓库根目录 `.env`：
+
+```dotenv
+PG_DATABASE=db
+PG_USERNAME=user
+PG_PASSWORD=password
+PG_HOST=127.0.0.1
+PG_PORT=5432
+FILES_STORE=download
+```
+
 如果你希望将附件和图片直接存入 S3，请使用环境变量覆盖：
 
 ```shell

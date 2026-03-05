@@ -9,6 +9,7 @@ dependencies = [
     "chardet",
     "lxml",
     "psycopg==3.3.3",
+    "python-dotenv",
     "pybloom-live",
     "pycryptodome",
     "readability-lxml",
