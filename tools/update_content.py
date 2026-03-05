@@ -100,6 +100,13 @@ async def create_db_connection() -> psycopg.AsyncConnection:
     return conn
 
 
+async def close_sessions():
+    for session in sessions.values():
+        if not session.closed:
+            await session.close()
+    sessions.clear()
+
+
 async def update_content(conn: psycopg.AsyncConnection,
                          url: str, title: str, content: str):
     sql = \
@@ -113,24 +120,29 @@ async def update_content(conn: psycopg.AsyncConnection,
 
 
 async def main():
-    conn = await create_db_connection()
+    conn = None
     urls = load_urls()
     i = 0
 
     s_time = time.time()
     print(f'start at {s_time}')
-    for u in urls:
-        try:
-            body = await request(u)
-            title, content = process_content(body)
-            await update_content(conn, u, title, content)
-        except Exception as e:
-            print(f'Error while processing {u}\n  type: {type(e)}\n  detail: {e}')
+    try:
+        conn = await create_db_connection()
+        for u in urls:
+            try:
+                body = await request(u)
+                title, content = process_content(body)
+                await update_content(conn, u, title, content)
+            except Exception as e:
+                print(f'Error while processing {u}\n  type: {type(e)}\n  detail: {e}')
 
-        i += 1
-        if i % 100 == 0:
-            print(i)
-    await conn.close()
+            i += 1
+            if i % 100 == 0:
+                print(i)
+    finally:
+        if conn is not None:
+            await conn.close()
+        await close_sessions()
 
     print(f'end at {time.time()}, {time.time() - s_time} s elapsed.')
 
