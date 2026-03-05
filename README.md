@@ -84,17 +84,26 @@ attachment_postfix_set = {
 git clone https://github.com/sunnysab/kite-string
 cd kite-string
 
-# 安装必要的依赖库
-pip install -r requirements.txt
+# 安装 uv（如未安装）
+# https://docs.astral.sh/uv/getting-started/installation/
+
+# 安装项目依赖
+uv sync
+
+# 运行静态检查
+uv run --group dev ruff check .
+
+# 如果需要运行 tools/ 下的 PDF 处理脚本，可额外安装 tools 依赖组
+uv sync --extra tools
 
 # ...此外还需要配置数据库
 
 # 执行校内公告爬虫
-scrapy crawl private
+uv run scrapy crawl private
 # 执行公开网页爬虫
-scrapy crawl public
+uv run scrapy crawl public
 # 执行图书馆爬虫
-scrapy crawl library
+uv run scrapy crawl library
 ```
 
 ### 修改

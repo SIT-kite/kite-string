@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 import asyncpg
-import cchardet
+import chardet
 from lxml import etree
 from readability import Document
 
@@ -69,7 +69,7 @@ def process_content(body: bytes) -> Tuple[str, str]:
         encoding = 'utf-8'
         html = body.decode(encoding)
     except Exception as _:
-        encoding = cchardet.detect(body)['encoding']
+        encoding = chardet.detect(body).get('encoding') or 'utf-8'
         html = body.decode(encoding, errors='replace')
 
     doc = Document(html)
