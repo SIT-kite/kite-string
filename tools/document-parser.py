@@ -10,6 +10,7 @@
 #            You must make sure the version of the libreoffice in the code is correct.
 
 import os
+import subprocess
 from typing import List, Tuple
 
 
@@ -110,21 +111,39 @@ class WordExtractor(DocExtractor):
         return self._path
 
     @staticmethod
-    def word2pdf(word_file: str, out_pdf_file: str):
-        """ Convert word document to pdf file by libreoffice. """
+    def word2pdf(word_file: str, output_directory: str or None = None) -> str:
+        """Convert word document to pdf file by libreoffice and return generated pdf path."""
 
-        import subprocess
-        command = f'libreoffice7.1 --headless --convert-to pdf {word_file} --outdir {out_pdf_file}'
-        subprocess.run(command, shell=True)
+        word_path = os.path.abspath(word_file)
+        if output_directory is None:
+            output_directory = os.path.dirname(word_path)
+        output_directory = os.path.abspath(output_directory)
+        os.makedirs(output_directory, exist_ok=True)
 
-    def convert_to_pdf(self, out_pdf_file: str):
-        self.word2pdf(self._path, out_pdf_file)
+        office_bin = os.getenv('LIBREOFFICE_BIN', 'libreoffice')
+        command = [
+            office_bin,
+            '--headless',
+            '--convert-to',
+            'pdf',
+            word_path,
+            '--outdir',
+            output_directory,
+        ]
+        subprocess.run(command, check=True)
+
+        file_title, _ = split_file_name(os.path.basename(word_path))
+        return os.path.join(output_directory, file_title + '.pdf')
+
+    def convert_to_pdf(self, output_directory: str or None = None) -> str:
+        return self.word2pdf(self._path, output_directory)
 
     def convert2png(self, output_directory: str = None):
         """ Convert word document to png files. """
 
         # Firstly, convert doc file into pdf.
-        _pdf_extractor = PdfExtractor(self._path)
+        pdf_path = self.convert_to_pdf()
+        _pdf_extractor = PdfExtractor(pdf_path)
         # Then, convert pdf to png files.
         # The file name rule is set by PdfExtractor
         _pdf_extractor.page2png(output_directory)
@@ -135,11 +154,8 @@ class WordExtractor(DocExtractor):
         # The method convert word document to pdf, and then use pdf extractor to read text.
         # It's not appropriate to read from word document directly, because it's hard to read the text with page number 
         # from the docx libraries in Python. 
-        file_title, _ = split_file_name(self._path)
-        file_name = file_title + '.pdf'
-
-        self.convert_to_pdf(file_name)
-        _pdf_extractor = PdfExtractor(file_name)
+        pdf_path = self.convert_to_pdf()
+        _pdf_extractor = PdfExtractor(pdf_path)
         return _pdf_extractor.text()
 
 
