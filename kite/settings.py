@@ -71,7 +71,7 @@ ITEM_PIPELINES = {
 }
 
 # DUPEFILTER_CLASS = 'scrapy.dupefilter.RFPDupeFilter'
-DUPEFILTER_CLASS = 'kite.dupfilters.KiteDupeFilter'
+DUPEFILTER_CLASS = 'kite.dupefilters.PageDupeFilter'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
