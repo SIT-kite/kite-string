@@ -86,6 +86,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Update existing page content by host/path.
+CREATE OR REPLACE PROCEDURE public.update_page(
+    _host text,
+    _path text,
+    _title text,
+    _content text
+) AS
+$$
+BEGIN
+    UPDATE public.pages
+    SET title   = _title,
+        content = _content
+    WHERE host = _host
+      AND path = _path;
+END;
+$$ LANGUAGE plpgsql;
+
 
 CREATE OR REPLACE PROCEDURE public.submit_attachment(
     _title text,
