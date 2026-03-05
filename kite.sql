@@ -1,11 +1,9 @@
 /*
     注意，这不是一个可以直接导入的 SQL 文件。
 
-    你需要先执行下面创建数据的语句，然后配置中文分词扩展 zhparser。
-    这儿有一篇资料：
-    https://sunnysab.cn/2021/02/13/Configure-Zhparser-On-Postgresql.md/
+    你需要先执行下面创建数据的语句，并确保 PostgreSQL 已安装 pg_jieba 扩展。
 
-    配置过程有些繁琐。如果想快速体验，请删除索引 idx_gin_page_content 创建行。
+    如果想快速体验且暂不安装 pg_jieba，请删除索引 idx_gin_page_content 创建行。
     如果有其他问题，可以在仓库中提一个 issue：
     https://github.com/sunnysab/kite-string/issues
 
@@ -14,6 +12,9 @@
 
 /* DATABASE */
 CREATE DATABASE kite;
+
+/* EXTENSIONS */
+CREATE EXTENSION IF NOT EXISTS pg_jieba;
 
 
 /* TABLES */
@@ -55,7 +56,7 @@ CREATE UNIQUE INDEX idx_pages_host_path_index
 
 -- 倒排索引
 CREATE INDEX IF NOT EXISTS idx_gin_page_content
-    ON pages USING gin (to_tsvector('kite_web'::regconfig, content));
+    ON pages USING gin (to_tsvector('jiebaqry', content));
 
 CREATE INDEX IF NOT EXISTS pages_publish_date_index
     ON pages (publish_date DESC);

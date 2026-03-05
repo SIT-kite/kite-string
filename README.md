@@ -24,7 +24,7 @@
 - Scrapy 2.4.1
 - PyCharm 2020.3
 - PostgreSQL 13.2
-- zhparser
+- pg_jieba
 
 ## 快速指南
 
@@ -72,6 +72,7 @@ export AWS_REGION_NAME='ap-east-1'
 - 页面正文元信息写入 `pages` 表。
 - 附件和图片的元信息统一写入 `attachments` 表。
 - 文件实体存储在 `FILES_STORE` 指向的位置（本地目录或 S3）。
+- 全文检索索引使用 `pg_jieba` 的 `jiebaqry` 配置；初始化数据库前请先安装该扩展。
 
 如有需要，可以在 `kite/spiders/__init__.py` 中修改已知的扩展名列表：
 
