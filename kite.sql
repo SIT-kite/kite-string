@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS attachments
 COMMENT ON TABLE attachments IS '附件列表';
 
 CREATE UNIQUE INDEX idx_attachments_host_path_index
-    ON attachments (HASHTEXT(host || path));
+    ON attachments (host, path);
 
 
 CREATE TABLE IF NOT EXISTS pages
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS pages
 COMMENT ON TABLE pages IS '爬取到的文章';
 
 CREATE UNIQUE INDEX idx_pages_host_path_index
-    ON pages (HASHTEXT(host || path));
+    ON pages (host, path);
 
 -- 倒排索引
 CREATE INDEX IF NOT EXISTS idx_gin_page_content
@@ -77,7 +77,7 @@ $$
 BEGIN
     INSERT INTO public.pages (title, host, path, publish_date, link_count, content)
     VALUES (_title, _host, _path, _publish_date, _link_count, _content)
-    ON CONFLICT (HASHTEXT(host || path))
+    ON CONFLICT (host, path)
         DO UPDATE
         SET title        = _title,
             publish_date = _publish_date,
@@ -101,7 +101,7 @@ $$
 BEGIN
     INSERT INTO public.attachments (title, host, path, ext, size, local_name, checksum, referer)
     VALUES (_title, _host, _path, _ext, _size, _local_name, _checksum, _referer)
-    ON CONFLICT (HASHTEXT(host || path))
+    ON CONFLICT (host, path)
         DO UPDATE
         SET title      = _title,
             ext        = _ext,
