@@ -44,7 +44,8 @@ class PublicPageSpider(scrapy.Spider):
         for title, url in link_list:
             title = title.strip() if title else ''
             url = response.urljoin(url)
-            if '.sit.edu.cn' not in url:
+            host, _ = divide_url(url)
+            if host != 'sit.edu.cn' and not host.endswith('.sit.edu.cn'):
                 continue
 
             """
