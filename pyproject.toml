@@ -7,9 +7,9 @@ requires-python = ">=3.10"
 dependencies = [
     "aiohttp",
     "botocore",
-    "chardet<6",
+    "chardet",
     "lxml",
-    "psycopg==3.3.3",
+    "psycopg",
     "python-dotenv",
     "pybloom-live",
     "pycryptodome",
