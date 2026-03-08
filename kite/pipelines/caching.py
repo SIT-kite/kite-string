@@ -23,10 +23,20 @@ class FileCachingPipeline(FilesPipeline):
         if not item:
             return None
 
+        headers = {}
+        referer = item.get('referer') if hasattr(item, 'get') else None
+        if referer:
+            headers['Referer'] = referer
+
+        request_kwargs = {
+            'url': item['url'],
+            'meta': {'title': item['title']},
+            'headers': headers,
+        }
         if 'cookies' in item:
-            yield scrapy.Request(item['url'], meta={'title': item['title']}, cookies=item['cookies'])
-        else:
-            yield scrapy.Request(item['url'], meta={'title': item['title']})
+            request_kwargs['cookies'] = item['cookies']
+
+        yield scrapy.Request(**request_kwargs)
 
     def media_downloaded(self, response, request, info, *, item=None):
         result = super().media_downloaded(response, request, info, item=item)

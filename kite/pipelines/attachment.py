@@ -4,6 +4,7 @@
 # @File    : attachment.py
 
 import os
+from urllib.parse import parse_qs
 
 import scrapy
 
@@ -12,7 +13,7 @@ from .. import divide_url
 from ..items import AttachmentItem
 
 
-def get_file_extension(path: str) -> str:
+def get_file_extension(path: str, title: str = '', local_name: str = '') -> str:
     """
     Get file extension section from filename or path. If the file is not separated by dot(s),
     it returns an empty string.
@@ -28,8 +29,22 @@ def get_file_extension(path: str) -> str:
     normalized_path = path
     if '#' in normalized_path:
         normalized_path = normalized_path.split('#', 1)[0]
-    if '?' in normalized_path:
-        normalized_path = normalized_path.split('?', 1)[0]
+
+    base_path, _, query = normalized_path.partition('?')
+    query_params = parse_qs(query, keep_blank_values=True)
+
+    for key in ('e', 'ext', 'extension', 'suffix'):
+        values = query_params.get(key)
+        if not values:
+            continue
+
+        extension = values[0].strip().lower()
+        if extension.startswith('.'):
+            extension = extension[1:]
+        if extension:
+            return extension
+
+    normalized_path = base_path
 
     dot_pos = normalized_path.rfind('.')
     slash_pos = normalized_path.rfind('/')
@@ -45,6 +60,20 @@ def get_file_extension(path: str) -> str:
             result = normalized_path[dot_pos + 1:]
         else:  # www.sit.edu.cn/
             pass
+
+    if result in {'jsp', 'vsb', ''}:
+        for candidate in (title, local_name):
+            if not candidate:
+                continue
+
+            candidate = candidate.split('?', 1)[0].split('#', 1)[0]
+            candidate_dot_pos = candidate.rfind('.')
+            candidate_slash_pos = candidate.rfind('/')
+            if candidate_dot_pos > candidate_slash_pos:
+                candidate_ext = candidate[candidate_dot_pos + 1:].lower()
+                if candidate_ext:
+                    return candidate_ext
+
     return result.lower()
 
 
@@ -79,8 +108,8 @@ class AttachmentPipeline:
             '''
 
         host, path = divide_url(item['url'])
-        ext = get_file_extension(path)
         local_name = item['path']
+        ext = get_file_extension(path, item.get('title', ''), local_name)
         size = item.get('size')
         if size is None:
             size = get_file_size(local_name)

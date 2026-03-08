@@ -49,7 +49,7 @@ class PublicPageSpider(scrapy.Spider):
         this_page['link_count'] = len(response.css('a[href]'))
         this_page['title'] = article.title()
         this_page['url'] = response.url
-        this_page['content'] = article.summary()
+        this_page['content'] = response.text
 
         # Submit the this_page to pipeline.
         yield this_page

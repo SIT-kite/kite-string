@@ -4,6 +4,7 @@
 # @File    : __init__.py
 
 from typing import List, Tuple
+from urllib.parse import parse_qs
 
 import scrapy
 
@@ -34,7 +35,7 @@ def get_links(response: scrapy.http.Response) -> List[Tuple[str or None, str]]:
     :param response: A scrapy.http.Response that contains the page
     :return: A list of tuple (title, url)
     """
-    link_list = [(a_node.xpath('.//text()').get(), a_node.attrib['href'])  # Make a tuple of title, href
+    link_list = [(a_node.xpath('string(.)').get(), a_node.attrib['href'])  # Make a tuple of title, href
                  for a_node in response.css('a[href]')]
     return filter_links(link_list)
 
@@ -71,11 +72,44 @@ def guess_link_type(path: str) -> str:
         'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico', 'tif', 'tiff'
     }
 
-    normalized_path = (path or '').lower()
-    if '#' in normalized_path:
-        normalized_path = normalized_path.split('#', 1)[0]
-    if '?' in normalized_path:
-        normalized_path = normalized_path.split('?', 1)[0]
+    raw_path = (path or '').lower()
+    if '#' in raw_path:
+        raw_path = raw_path.split('#', 1)[0]
+
+    normalized_path, _, query = raw_path.partition('?')
+
+    query_params = parse_qs(query, keep_blank_values=True)
+
+    def detect_extension(value: str | None) -> str:
+        if not value:
+            return ''
+
+        extension = value.strip().lower()
+        if extension.startswith('.'):
+            extension = extension[1:]
+        return extension
+
+    query_extension = ''
+    for key in ('e', 'ext', 'extension', 'suffix'):
+        values = query_params.get(key)
+        if values:
+            query_extension = detect_extension(values[0])
+            if query_extension:
+                break
+
+    if 'urltype' in query_params:
+        for value in query_params['urltype']:
+            if 'downloadattachurl' in value:
+                return 'attachment'
+
+    if 'wbfileid' in query_params:
+        return 'attachment'
+
+    if query_extension in attachment_postfix_set:
+        return 'attachment'
+
+    if query_extension in image_postfix_set:
+        return 'image'
 
     for each_postfix in page_postfix_set:
         if normalized_path.endswith(each_postfix):
