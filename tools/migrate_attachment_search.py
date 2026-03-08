@@ -1,61 +1,31 @@
-/*
-    注意，这不是一个可以直接导入的 SQL 文件。
+from __future__ import annotations
 
-    你需要先执行下面创建数据的语句，并确保 PostgreSQL 已安装 pg_jieba 扩展。
+import os
 
-    如果想快速体验且暂不安装 pg_jieba，请删除索引 idx_pages_search_vector 创建行。
-    如果有其他问题，可以在仓库中提一个 issue：
-    https://github.com/sunnysab/kite-string/issues
+import psycopg
+from dotenv import load_dotenv
 
-    2021.2.14  @sunnysab
-*/
+load_dotenv('.env')
 
-/* DATABASE */
-CREATE DATABASE kite;
-
-/* EXTENSIONS */
+SQL = r'''
 CREATE EXTENSION IF NOT EXISTS pg_jieba;
 
-
-/* TABLES */
-
-CREATE TABLE IF NOT EXISTS attachments
-(
-    id         serial                not null
-        constraint attachments_pk
-            primary key,
-    title      text,
-    host       text,
-    path       text,
-    ext        text,
-    size       integer,
-    local_name text,
-    checksum   char(32),
-    referer    text default ''::text not null,
-    search_vector tsvector
-);
-COMMENT ON TABLE attachments IS '附件列表';
-
-ALTER TABLE attachments
+ALTER TABLE public.attachments
 ADD COLUMN IF NOT EXISTS search_vector tsvector;
 
-CREATE UNIQUE INDEX idx_attachments_host_path_index
-    ON attachments (host, path);
-
 CREATE INDEX IF NOT EXISTS idx_attachments_ext_index
-    ON attachments (ext);
+    ON public.attachments (ext);
 
 CREATE INDEX IF NOT EXISTS idx_attachments_search_vector
-    ON attachments USING gin (search_vector);
+    ON public.attachments USING gin (search_vector);
 
-
-CREATE TABLE IF NOT EXISTS attachment_content
+CREATE TABLE IF NOT EXISTS public.attachment_content
 (
     attachment_id   integer                     not null
         constraint attachment_content_pk
             primary key
         constraint attachment_content_attachment_id_fk
-            references attachments(id)
+            references public.attachments(id)
                 on delete cascade,
     content         text        default ''::text not null,
     content_type    text,
@@ -67,60 +37,30 @@ CREATE TABLE IF NOT EXISTS attachment_content
     updated_at      timestamptz default now() not null,
     search_vector   tsvector
 );
-COMMENT ON TABLE attachment_content IS '附件全文索引';
 
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS content text default ''::text not null;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS content_type text;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS parser text;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS status text default 'pending'::text not null;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS error_message text;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS source_checksum char(32);
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS indexed_at timestamptz;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS updated_at timestamptz default now() not null;
-
-ALTER TABLE attachment_content
+ALTER TABLE public.attachment_content
 ADD COLUMN IF NOT EXISTS search_vector tsvector;
 
 CREATE INDEX IF NOT EXISTS idx_attachment_content_search_vector
-    ON attachment_content USING gin (search_vector);
-
+    ON public.attachment_content USING gin (search_vector);
 CREATE INDEX IF NOT EXISTS idx_attachment_content_status_index
-    ON attachment_content (status);
-
-
-CREATE TABLE IF NOT EXISTS pages
-(
-    title        text,
-    host         text,
-    path         text,
-    publish_date date,
-    update_date  date,
-    link_count   smallint,
-    content      text not null,
-    search_vector tsvector
-);
-COMMENT ON TABLE pages IS '爬取到的文章';
-
-ALTER TABLE pages
-ADD COLUMN IF NOT EXISTS search_vector tsvector;
-
-CREATE UNIQUE INDEX idx_pages_host_path_index
-    ON pages (host, path);
+    ON public.attachment_content (status);
 
 CREATE OR REPLACE FUNCTION public.extract_attachment_filename(
     _path text,
@@ -150,19 +90,6 @@ SELECT
     ) ||
     setweight(to_tsvector('jiebaqry', COALESCE(_ext, '')), 'B') ||
     setweight(to_tsvector('jiebaqry', COALESCE(_referer, '')), 'B');
-$$ LANGUAGE sql STABLE;
-
-CREATE OR REPLACE FUNCTION public.build_page_search_vector(
-    _title text,
-    _content text
-) RETURNS tsvector AS
-$$
-SELECT
-    setweight(to_tsvector('jiebaqry', COALESCE(_title, '')), 'A') ||
-    setweight(
-        to_tsvector('jiebaqry', COALESCE(SUBSTRING(_content FROM 1 FOR 50000), '')),
-        'B'
-    );
 $$ LANGUAGE sql STABLE;
 
 CREATE OR REPLACE FUNCTION public.build_attachment_search_vector(
@@ -363,14 +290,14 @@ BEGIN
         ON CONFLICT (attachment_id)
             DO UPDATE
             SET status          = CASE
-                                      WHEN attachment_content.source_checksum IS DISTINCT FROM EXCLUDED.source_checksum
+                                      WHEN public.attachment_content.source_checksum IS DISTINCT FROM EXCLUDED.source_checksum
                                           THEN 'pending'
-                                      ELSE attachment_content.status
+                                      ELSE public.attachment_content.status
                                   END,
                 error_message   = CASE
-                                      WHEN attachment_content.source_checksum IS DISTINCT FROM EXCLUDED.source_checksum
+                                      WHEN public.attachment_content.source_checksum IS DISTINCT FROM EXCLUDED.source_checksum
                                           THEN NULL
-                                      ELSE attachment_content.error_message
+                                      ELSE public.attachment_content.error_message
                                   END,
                 source_checksum = EXCLUDED.source_checksum,
                 updated_at      = now();
@@ -390,15 +317,6 @@ BEGIN
     WHERE attachment_id = NEW.id
       AND status = 'success';
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION public.pages_search_vector_trigger()
-RETURNS trigger AS
-$$
-BEGIN
-    NEW.search_vector = public.build_page_search_vector(NEW.title, NEW.content);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -426,48 +344,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_attachments_search_vector ON attachments;
-
+DROP TRIGGER IF EXISTS trg_attachments_search_vector ON public.attachments;
 CREATE TRIGGER trg_attachments_search_vector
 BEFORE INSERT OR UPDATE OF title, path, local_name, ext, referer
-ON attachments
+ON public.attachments
 FOR EACH ROW EXECUTE FUNCTION public.attachments_search_vector_trigger();
 
-DROP TRIGGER IF EXISTS trg_sync_attachment_content_search_vector ON attachments;
-
+DROP TRIGGER IF EXISTS trg_sync_attachment_content_search_vector ON public.attachments;
 CREATE TRIGGER trg_sync_attachment_content_search_vector
 AFTER INSERT OR UPDATE OF title
-ON attachments
+ON public.attachments
 FOR EACH ROW EXECUTE FUNCTION public.sync_attachment_content_search_vector_trigger();
 
-DROP TRIGGER IF EXISTS trg_queue_attachment_content_index ON attachments;
-
+DROP TRIGGER IF EXISTS trg_queue_attachment_content_index ON public.attachments;
 CREATE TRIGGER trg_queue_attachment_content_index
 AFTER INSERT OR UPDATE OF ext, checksum, local_name
-ON attachments
+ON public.attachments
 FOR EACH ROW EXECUTE FUNCTION public.queue_attachment_content_index_trigger();
 
-DROP TRIGGER IF EXISTS trg_pages_search_vector ON pages;
-
-CREATE TRIGGER trg_pages_search_vector
-BEFORE INSERT OR UPDATE OF title, content
-ON pages
-FOR EACH ROW EXECUTE FUNCTION public.pages_search_vector_trigger();
-
-DROP TRIGGER IF EXISTS trg_attachment_content_search_vector ON attachment_content;
-
+DROP TRIGGER IF EXISTS trg_attachment_content_search_vector ON public.attachment_content;
 CREATE TRIGGER trg_attachment_content_search_vector
 BEFORE INSERT OR UPDATE OF attachment_id, content, status
-ON attachment_content
+ON public.attachment_content
 FOR EACH ROW EXECUTE FUNCTION public.attachment_content_search_vector_trigger();
 
-UPDATE attachments
+UPDATE public.attachments
 SET search_vector = public.build_attachment_metadata_search_vector(title, path, local_name, ext, referer)
 WHERE search_vector IS NULL;
 
-UPDATE attachment_content AS ac
+UPDATE public.attachment_content AS ac
 SET search_vector = public.build_attachment_search_vector(a.title, ac.content)
-FROM attachments AS a
+FROM public.attachments AS a
 WHERE ac.attachment_id = a.id
   AND ac.status = 'success';
 
@@ -477,123 +384,22 @@ FROM public.attachments AS a
 LEFT JOIN public.attachment_content AS ac ON ac.attachment_id = a.id
 WHERE public.should_index_attachment_content(a.ext)
   AND ac.attachment_id IS NULL;
-
-UPDATE pages
-SET search_vector = public.build_page_search_vector(title, content)
-WHERE search_vector IS NULL;
-
-DROP INDEX IF EXISTS idx_gin_page_content;
-
--- 倒排索引
-CREATE INDEX IF NOT EXISTS idx_pages_search_vector
-    ON pages USING gin (search_vector);
-
-CREATE INDEX IF NOT EXISTS pages_publish_date_index
-    ON pages (publish_date DESC);
-
-/*
-    FUNCTIONS AND PROCEDURES
-*/
-
--- Save page
-CREATE OR REPLACE PROCEDURE public.submit_page(
-    _title text,
-    _host text,
-    _path text,
-    _publish_date date,
-    _link_count integer,
-    _content text
-) AS
-$$
-BEGIN
-    INSERT INTO public.pages (title, host, path, publish_date, link_count, content)
-    VALUES (_title, _host, _path, _publish_date, _link_count, _content)
-    ON CONFLICT (host, path)
-        DO UPDATE
-        SET title        = _title,
-            publish_date = _publish_date,
-            link_count   = _link_count,
-            content      = _content;
-END;
-$$ LANGUAGE plpgsql;
-
--- Update existing page content by host/path.
-CREATE OR REPLACE PROCEDURE public.update_page(
-    _host text,
-    _path text,
-    _title text,
-    _content text
-) AS
-$$
-BEGIN
-    UPDATE public.pages
-    SET title   = _title,
-        content = _content
-    WHERE host = _host
-      AND path = _path;
-END;
-$$ LANGUAGE plpgsql;
+'''
 
 
-CREATE OR REPLACE PROCEDURE public.submit_attachment(
-    _title text,
-    _host text,
-    _path text,
-    _ext text,
-    _size integer,
-    _local_name text,
-    _checksum text,
-    _referer text
-) AS
-$$
-BEGIN
-    INSERT INTO public.attachments (title, host, path, ext, size, local_name, checksum, referer)
-    VALUES (_title, _host, _path, _ext, _size, _local_name, _checksum, _referer)
-    ON CONFLICT (host, path)
-        DO UPDATE
-        SET title      = _title,
-            ext        = _ext,
-            size       = _size,
-            local_name = _local_name,
-            checksum   = _checksum,
-            referer    = _referer;
-END;
-$$ LANGUAGE plpgsql;
+def main():
+    conn = psycopg.connect(
+        dbname=os.getenv('PG_DATABASE', 'db'),
+        user=os.getenv('PG_USERNAME', os.getenv('PG_USER', 'postgres')),
+        password=os.getenv('PG_PASSWORD', ''),
+        host=os.getenv('PG_HOST', '127.0.0.1'),
+        port=int(os.getenv('PG_PORT', '5432')),
+        autocommit=True,
+    )
+    with conn, conn.cursor() as cursor:
+        cursor.execute(SQL)
+    print('attachment search migration applied')
 
 
-CREATE OR REPLACE PROCEDURE public.submit_attachment_content(
-    _attachment_id integer,
-    _content text,
-    _content_type text,
-    _parser text,
-    _status text,
-    _error_message text,
-    _source_checksum text
-) AS
-$$
-BEGIN
-    INSERT INTO public.attachment_content
-        (attachment_id, content, content_type, parser, status, error_message, source_checksum, indexed_at)
-    VALUES
-        (
-            _attachment_id,
-            COALESCE(_content, ''),
-            _content_type,
-            _parser,
-            COALESCE(_status, 'pending'),
-            _error_message,
-            _source_checksum,
-            CASE WHEN COALESCE(_status, 'pending') = 'pending' THEN NULL ELSE now() END
-        )
-    ON CONFLICT (attachment_id)
-        DO UPDATE
-        SET content         = COALESCE(_content, ''),
-            content_type    = _content_type,
-            parser          = _parser,
-            status          = COALESCE(_status, 'pending'),
-            error_message   = _error_message,
-            source_checksum = _source_checksum,
-            indexed_at      = CASE WHEN COALESCE(_status, 'pending') = 'pending' THEN attachment_content.indexed_at ELSE now() END,
-            updated_at      = now();
-END;
-$$ LANGUAGE plpgsql;
+if __name__ == '__main__':
+    main()

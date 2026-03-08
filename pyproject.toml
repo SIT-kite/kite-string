@@ -22,7 +22,11 @@ dependencies = [
 [project.optional-dependencies]
 tools = [
     "pdfminer3k",
+    "openpyxl",
+    "python-docx",
+    "python-pptx",
     "wand",
+    "xlrd",
 ]
 
 [dependency-groups]

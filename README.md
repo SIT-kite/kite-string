@@ -71,6 +71,8 @@ export AWS_REGION_NAME='ap-east-1'
 
 - 页面正文元信息写入 `pages` 表。
 - 附件和图片的元信息统一写入 `attachments` 表。
+- 附件元数据分词写入 `attachments.search_vector`，覆盖 `title`、文件名、`ext`、`referer`。
+- 附件全文索引写入 `attachment_content` 表，并维护 `attachment_content.search_vector`。
 - 文件实体存储在 `FILES_STORE` 指向的位置（本地目录或 S3）。
 - 全文检索使用 `pg_jieba` 的 `jiebaqry` 配置，并维护 `pages.search_vector` 列（`title` 权重 A，`content` 权重 B）。
 
@@ -112,8 +114,16 @@ uv sync
 # 运行静态检查
 uv run --group dev ruff check .
 
-# 如果需要运行 tools/ 下的 PDF 处理脚本，可额外安装 tools 依赖组
+# 如果需要附件正文索引，请额外安装 tools 依赖
 uv sync --extra tools
+
+# 可选：老式 .doc 建议安装 antiword 与 catdoc（任一可用即可，两个都装更稳）
+# 例如 Arch Linux:
+# sudo pacman -S --needed antiword catdoc
+
+# 可选：.doc / .ppt 也可通过 LibreOffice 转 PDF 后再提取
+# 例如 Ubuntu / Debian:
+# sudo apt-get install -y libreoffice
 
 # ...此外还需要配置数据库
 
@@ -146,6 +156,134 @@ uv run scrapy crawl public -s JOBDIR=.scrapy/jobs/public
 ```
 
 之后即使手动停止，也可以用同一命令继续。
+
+### 附件分词与全文索引
+
+假设：
+
+- 你已经执行过 `uv run --extra tools python tools/migrate_attachment_search.py`，或手动应用过 `kite.sql` 中新增的附件检索相关语句。
+- PostgreSQL 已安装 `pg_jieba`。
+- 若 `FILES_STORE` 使用本地目录，脚本会直接读取本地文件。
+- 若 `FILES_STORE` 使用 `s3://bucket/prefix`，脚本会按当前 `AWS_*` 配置读取对象存储中的附件。
+
+当前行为：
+
+- 元数据检索：`attachments.search_vector`
+- 全文检索：`attachment_content.search_vector`
+- 已支持：`pdf`、`doc`、`docx`、`ppt`、`pptx`、`xls`、`xlsx`
+- 直接解析：`pdf`、`docx`、`pptx`、`xls`、`xlsx`
+- 兜底解析：`doc` 优先走 `antiword`，失败时再尝试 `catdoc`，最后再尝试 `libreoffice --headless`；`ppt` 走 `libreoffice --headless`
+- 增量策略：新附件或 `checksum` 变化时，自动写入/更新 `attachment_content.status = 'pending'`
+
+执行：
+
+```shell
+# 先应用附件检索迁移
+uv run --extra tools python tools/migrate_attachment_search.py
+
+# 增量索引最近未处理、失败或 checksum 变化的附件
+uv run --extra tools python tools/index_attachment_content.py
+
+# 只重建 PDF 附件
+uv run --extra tools python tools/index_attachment_content.py --ext pdf --force
+
+# 只处理指定附件
+uv run --extra tools python tools/index_attachment_content.py --attachment-id 123
+
+# 如果你补装了 antiword / catdoc / libreoffice，需要重试历史失败项
+uv run --extra tools python tools/index_attachment_content.py --retry-failed
+```
+
+验证：
+
+```sql
+SELECT id, title, ext
+FROM attachments
+WHERE search_vector @@ to_tsquery('jiebaqry', '通知 & pdf');
+
+SELECT a.id, a.title, ac.status
+FROM attachment_content AS ac
+JOIN attachments AS a ON a.id = ac.attachment_id
+WHERE ac.search_vector @@ to_tsquery('jiebaqry', '奖学金');
+
+SELECT *
+FROM public.search_attachment('奖学金', NULL, NULL, 10, 0, true);
+```
+
+本地查询：
+
+```shell
+# 搜附件元数据 + 正文
+uv run --extra tools python tools/search_attachment.py 奖学金
+
+# 只搜 PDF
+uv run --extra tools python tools/search_attachment.py 通知 --ext pdf
+
+# 只搜元数据
+uv run --extra tools python tools/search_attachment.py 招生 --metadata-only
+
+# 过滤指定站点
+uv run --extra tools python tools/search_attachment.py 转专业 --host jwc.sit.edu.cn
+
+# 页面 + 附件一起搜
+uv run --extra tools python tools/search_site_content.py 奖学金
+
+# 只搜页面
+uv run --extra tools python tools/search_site_content.py 奖学金 --pages-only
+
+# 只搜附件，并限制附件扩展名
+uv run --extra tools python tools/search_site_content.py 通知 --attachments-only --attachment-ext pdf
+```
+
+## systemd 定时执行
+
+仓库内已提供用户级 `systemd` 定时任务配置：
+
+- `tools/auto_sync.sh`：执行脚本、检查仓库状态、自动 `commit + push`
+- `deploy/systemd/user/kite-string-auto-sync.service`
+- `deploy/systemd/user/kite-string-auto-sync.timer`
+
+默认执行命令是：
+
+```shell
+uv run scrapy crawl public
+```
+
+定时规则是每天本地时间 `08:00` 和 `16:00` 各执行一次；若机器在该时间点关机，开机后会补跑一次。
+
+### 安装
+
+```shell
+mkdir -p ~/.config/systemd/user
+ln -sf /home/sab/kite-string/deploy/systemd/user/kite-string-auto-sync.service ~/.config/systemd/user/kite-string-auto-sync.service
+ln -sf /home/sab/kite-string/deploy/systemd/user/kite-string-auto-sync.timer ~/.config/systemd/user/kite-string-auto-sync.timer
+systemctl --user daemon-reload
+systemctl --user enable --now kite-string-auto-sync.timer
+```
+
+### 验证
+
+```shell
+systemctl --user status kite-string-auto-sync.timer
+systemctl --user list-timers kite-string-auto-sync.timer --all
+journalctl --user -u kite-string-auto-sync.service -n 50 --no-pager
+```
+
+### 可选环境变量
+
+如果你想覆盖默认行为，可以在启动 service 前注入这些环境变量：
+
+- `AUTO_RUN_COMMAND`：实际执行的命令
+- `AUTO_COMMIT_MESSAGE_PREFIX`：提交标题，默认是 `chore: scheduled update`
+- `GIT_REMOTE`：默认是 `origin`
+- `GIT_BRANCH`：默认取当前分支
+- `RUN_TIMEOUT`：默认是 `3h`
+
+脚本还会做这些保护：
+
+- 若运行前仓库已有未提交改动，会直接退出，避免误提交你的手工修改
+- 若已有同一任务在运行，会直接跳过，避免并发重复跑
+- 若本次执行后没有文件变化，不会创建空提交
 
 ### 修改
 
